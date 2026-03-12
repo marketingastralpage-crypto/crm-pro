@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM Pro — Gestione Contatti</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --primary: #667eea;
+  --primary-dark: #764ba2;
+  --sidebar: #0f0f1a;
+  --bg: #f0f2f7;
+  --card: #ffffff;
+  --text: #1a202c;
+  --muted: #718096;
+  --border: #e2e8f0;
+  --success: #38a169;
+  --warning: #dd6b20;
+  --danger: #e53e3e;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; overflow: hidden; }
+
+/* ── SIDEBAR ── */
+.sidebar { width: 255px; background: var(--sidebar); display: flex; flex-direction: column; flex-shrink: 0; }
+.sidebar-logo { padding: 22px 18px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; gap: 12px; }
+.logo-icon { width: 42px; height: 42px; background: rgba(255,255,255,0.2); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+.sidebar-logo h1 { color: #fff; font-size: 19px; font-weight: 700; line-height: 1.2; }
+.sidebar-logo p { color: rgba(255,255,255,0.65); font-size: 11px; }
+.sidebar-nav { padding: 18px 10px; flex: 1; overflow-y: auto; }
+.nav-section-title { color: rgba(255,255,255,0.28); font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; padding: 0 8px; margin: 0 0 6px; }
+.nav-section { margin-bottom: 22px; }
+.nav-item { display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 9px; color: rgba(255,255,255,0.55); cursor: pointer; transition: all .18s; margin-bottom: 2px; font-size: 13.5px; font-weight: 500; }
+.nav-item:hover { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.9); }
+.nav-item.active { background: linear-gradient(135deg, rgba(102,126,234,0.45), rgba(118,75,162,0.45)); color: #fff; }
+.nav-item .ni { font-size: 16px; width: 20px; text-align: center; }
+.sidebar-footer { padding: 14px 18px; font-size: 11.5px; color: rgba(255,255,255,0.25); border-top: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; justify-content: space-between; }
+.db-dot { width: 7px; height: 7px; border-radius: 50%; background: #48bb78; display: inline-block; margin-right: 5px; }
+.db-dot.offline { background: #fc8181; }
+
+/* ── MAIN ── */
+.main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.topbar { background: #fff; padding: 14px 26px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); box-shadow: 0 1px 4px rgba(0,0,0,0.06); flex-shrink: 0; }
+.topbar-title { font-size: 19px; font-weight: 700; }
+.topbar-actions { display: flex; gap: 10px; align-items: center; }
+.content { flex: 1; overflow-y: auto; padding: 22px 26px; }
+
+/* ── BUTTONS ── */
+.btn { padding: 8px 15px; border-radius: 8px; border: none; cursor: pointer; font-size: 13.5px; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all .18s; font-family: inherit; }
+.btn-primary { background: linear-gradient(135deg, #667eea, #764ba2); color: #fff; }
+.btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 14px rgba(102,126,234,0.4); }
+.btn-secondary { background: #fff; color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg); }
+.btn-success { background: linear-gradient(135deg, #48bb78, #38a169); color: #fff; }
+.btn-success:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(56,161,105,0.35); }
+.btn-sm { padding: 5px 11px; font-size: 12.5px; }
+
+/* ── STATS ── */
+.stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: #fff; border-radius: 12px; padding: 18px 20px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+.stat-card::after { content:''; position:absolute; top:0; left:0; right:0; height:3px; }
+.stat-card.c-purple::after { background: linear-gradient(90deg,#667eea,#764ba2); }
+.stat-card.c-green::after  { background: linear-gradient(90deg,#48bb78,#38a169); }
+.stat-card.c-orange::after { background: linear-gradient(90deg,#f6ad55,#ed8936); }
+.stat-card.c-red::after    { background: linear-gradient(90deg,#fc8181,#e53e3e); }
+.stat-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-weight: 500; }
+.stat-value { font-size: 26px; font-weight: 700; }
+.stat-sub { font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+
+/* ── FILTER BAR ── */
+.filter-bar { background: #fff; border-radius: 11px; padding: 13px 18px; border: 1px solid var(--border); margin-bottom: 14px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.filter-input { flex: 1; min-width: 180px; padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; outline: none; font-family: inherit; transition: border-color .2s; }
+.filter-input:focus { border-color: #667eea; }
+.filter-select { padding: 7px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; outline: none; background: #fff; cursor: pointer; font-family: inherit; }
+
+/* ── TABLE ── */
+.table-card { background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+table { width: 100%; border-collapse: collapse; }
+thead th { padding: 11px 14px; text-align: left; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .5px; background: #f8fafc; border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; white-space: nowrap; }
+thead th:hover { color: var(--text); }
+tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; cursor: pointer; }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: #fafbff; }
+td { padding: 11px 14px; font-size: 13.5px; vertical-align: middle; }
+
+/* ── BADGES ── */
+.badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11.5px; font-weight: 500; white-space: nowrap; }
+.s-cold-call         { background: #fff0f6; color: #c53030; }
+.s-email-inviata     { background: #ebf4ff; color: #2b6cb0; }
+.s-call-fissata      { background: #faf5ff; color: #6b46c1; }
+.s-preventivo        { background: #fffaf0; color: #c05621; }
+.s-call-annullata    { background: #fff5f5; color: #c53030; }
+.s-followup          { background: #e6fffa; color: #2c7a7b; }
+.s-non-interessato   { background: #f7fafc; color: #718096; }
+.s-cliente           { background: #f0fff4; color: #276749; }
+.p-alta   { background: #fff5f5; color: #c53030; }
+.p-media  { background: #fffaf0; color: #c05621; }
+.p-bassa  { background: #f0fff4; color: #276749; }
+.date-exp  { color: #e53e3e; font-weight: 600; }
+.date-soon { color: #dd6b20; font-weight: 500; }
+
+/* ── AVATAR ── */
+.avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; flex-shrink: 0; }
+.contact-cell { display: flex; align-items: center; gap: 10px; }
+.contact-name { font-weight: 600; font-size: 13.5px; }
+.contact-sub { font-size: 11.5px; color: var(--muted); }
+
+/* ── ACTION BUTTONS ── */
+.action-btns { display: flex; gap: 4px; }
+.btn-icon { width: 28px; height: 28px; border-radius: 6px; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 13px; transition: transform .15s; }
+.btn-icon:hover { transform: scale(1.15); }
+.btn-edit { background: #ebf4ff; color: #2b6cb0; }
+.btn-del  { background: #fff5f5; color: #e53e3e; }
+.btn-link { background: #f0fff4; color: #276749; text-decoration: none; }
+
+/* ── MODAL ── */
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.52); display: flex; align-items: center; justify-content: center; z-index: 1000; padding: 16px; }
+.modal { background: #fff; border-radius: 16px; width: 100%; max-width: 920px; max-height: 92vh; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 24px 70px rgba(0,0,0,0.28); }
+.modal-header { padding: 18px 24px; background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+.modal-header h2 { font-size: 17px; font-weight: 600; }
+.modal-close { background: rgba(255,255,255,0.2); border: none; color: #fff; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 17px; display: flex; align-items: center; justify-content: center; transition: background .15s; }
+.modal-close:hover { background: rgba(255,255,255,0.35); }
+.modal-body { padding: 22px 24px; overflow-y: auto; flex: 1; }
+.modal-footer { padding: 14px 24px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 10px; background: #f8fafc; flex-shrink: 0; }
+
+/* ── FORM ── */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-section { grid-column: 1 / -1; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .7px; padding: 10px 0 4px; border-bottom: 1px solid var(--border); margin-top: 6px; }
+label { font-size: 12.5px; font-weight: 500; color: var(--text); }
+input, select, textarea { padding: 8px 11px; border: 1px solid var(--border); border-radius: 8px; font-size: 13.5px; outline: none; transition: border-color .2s, box-shadow .2s; color: var(--text); background: #fff; font-family: inherit; }
+input:focus, select:focus, textarea:focus { border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.12); }
+textarea { resize: vertical; min-height: 78px; }
+
+/* ── PIPELINE ── */
+.pipeline-wrap { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; }
+.pipe-col { min-width: 210px; max-width: 210px; background: #fff; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+.pipe-header { padding: 11px 14px; font-weight: 600; font-size: 12.5px; display: flex; align-items: center; justify-content: space-between; }
+.pipe-count { border-radius: 20px; padding: 2px 8px; font-size: 11px; }
+.pipe-total { padding: 4px 14px; font-size: 11.5px; font-weight: 600; color: #38a169; background: #f0fff4; }
+.pipe-cards { padding: 8px; min-height: 80px; }
+.pipe-card { background: #f8fafc; border-radius: 8px; padding: 10px 12px; margin-bottom: 7px; border: 1px solid var(--border); cursor: pointer; transition: border-color .15s; }
+.pipe-card:hover { border-color: #667eea; }
+.pipe-card-name { font-weight: 600; font-size: 12.5px; margin-bottom: 2px; }
+.pipe-card-co { font-size: 11.5px; color: var(--muted); }
+.pipe-card-val { font-size: 11.5px; color: #38a169; font-weight: 600; margin-top: 5px; }
+
+/* ── IMPORT ── */
+.guide-box { background: linear-gradient(135deg,rgba(102,126,234,.08),rgba(118,75,162,.08)); border: 1px solid rgba(102,126,234,.25); border-radius: 11px; padding: 18px; margin-bottom: 16px; }
+.guide-box h3 { color: #667eea; margin-bottom: 10px; font-size: 14.5px; }
+.guide-box ol { padding-left: 18px; line-height: 2; font-size: 13.5px; }
+.col-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 7px; margin-top: 10px; }
+.col-item { background: #fff; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-family: 'Courier New', monospace; }
+.drop-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 30px; text-align: center; cursor: pointer; transition: border-color .2s; }
+.drop-zone:hover { border-color: #667eea; }
+
+/* ── EMPTY / LOADING ── */
+.empty { text-align: center; padding: 56px 20px; color: var(--muted); }
+.empty .ei { font-size: 58px; margin-bottom: 14px; }
+.empty h3 { font-size: 17px; color: var(--text); margin-bottom: 6px; }
+.loading-wrap { display: flex; align-items: center; justify-content: center; padding: 60px; gap: 12px; color: var(--muted); font-size: 14px; }
+.spinner { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: #667eea; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── FULL-SCREEN LOADER ── */
+#loader { position: fixed; inset: 0; background: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 9000; gap: 16px; transition: opacity .3s; }
+#loader .logo { font-size: 48px; }
+#loader p { font-size: 15px; color: var(--muted); }
+#loader .spin-big { width: 36px; height: 36px; border: 4px solid var(--border); border-top-color: #667eea; border-radius: 50%; animation: spin .7s linear infinite; }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 22px; right: 22px; background: #1a1a2e; color: #fff; padding: 11px 18px; border-radius: 10px; font-size: 13.5px; z-index: 9999; transform: translateY(80px); opacity: 0; transition: all .28s; display: flex; align-items: center; gap: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok   { border-left: 4px solid #48bb78; }
+.toast.err  { border-left: 4px solid #fc8181; }
+
+/* ── MISC ── */
+.money { font-weight: 600; color: #276749; }
+.hidden { display: none !important; }
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+</style>
+</head>
+<body>
+
+<!-- FULL SCREEN LOADER -->
+<div id="loader">
+  <div class="logo">💼</div>
+  <div class="spin-big"></div>
+  <p>Connessione al database...</p>
+</div>
+
+<!-- ═══════════════ SIDEBAR ═══════════════ -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">💼</div>
+    <div><h1>CRM Pro</h1><p>Gestione Contatti</p></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-title">Principale</div>
+      <div class="nav-item active" data-view="dashboard" onclick="navigate('dashboard')">
+        <span class="ni">📊</span><span>Dashboard</span>
+      </div>
+      <div class="nav-item" data-view="contacts" onclick="navigate('contacts')">
+        <span class="ni">👥</span><span>Contatti</span>
+      </div>
+      <div class="nav-item" data-view="pipeline" onclick="navigate('pipeline')">
+        <span class="ni">🔄</span><span>Pipeline</span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Strumenti</div>
+      <div class="nav-item" onclick="openImport()">
+        <span class="ni">📤</span><span>Importa Dati</span>
+      </div>
+      <div class="nav-item" onclick="exportCSV()">
+        <span class="ni">📥</span><span>Esporta CSV</span>
+      </div>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <span><span class="db-dot" id="dbDot"></span>Supabase</span>
+    <span><span id="sideCount">0</span> contatti</span>
+  </div>
+</aside>
+
+<!-- ═══════════════ MAIN ═══════════════ -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-title" id="pageTitle">Dashboard</div>
+    <div class="topbar-actions">
+      <button class="btn btn-secondary" onclick="openImport()">📤 Importa</button>
+      <button class="btn btn-primary" onclick="openContactModal()">＋ Aggiungi Contatto</button>
+    </div>
+  </div>
+  <div class="content" id="content">
+    <div class="loading-wrap"><div class="spinner"></div> Caricamento...</div>
+  </div>
+</div>
+
+<!-- ═══════════════ CONTACT MODAL ═══════════════ -->
+<div class="overlay hidden" id="contactModal" onclick="if(event.target===this)closeContactModal()">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="modalTitle">Nuovo Contatto</h2>
+      <button class="modal-close" onclick="closeContactModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-section">Informazioni Personali</div>
+        <div class="form-group"><label>Nome *</label><input id="f_nome" type="text" placeholder="Mario"></div>
+        <div class="form-group"><label>Cognome *</label><input id="f_cognome" type="text" placeholder="Rossi"></div>
+        <div class="form-group"><label>Azienda</label><input id="f_azienda" type="text" placeholder="Acme Srl"></div>
+        <div class="form-group"><label>Ruolo</label><input id="f_ruolo" type="text" placeholder="CEO"></div>
+        <div class="form-group"><label>Email</label><input id="f_email" type="email" placeholder="mario@acme.com"></div>
+        <div class="form-group"><label>Telefono</label><input id="f_telefono" type="tel" placeholder="+39 333 1234567"></div>
+        <div class="form-group"><label>LinkedIn</label><input id="f_linkedin" type="url" placeholder="https://linkedin.com/in/..."></div>
+        <div class="form-group"><label>Sito Web</label><input id="f_sito" type="url" placeholder="https://example.com"></div>
+
+        <div class="form-section">Stato &amp; Azioni</div>
+        <div class="form-group"><label>Stage</label>
+          <select id="f_stage">
+            <option>Cold call</option><option>Email inviata</option><option>Call fissata</option>
+            <option>Preventivo inviato</option><option>Call annullata</option>
+            <option>Followup inviato</option><option>Non interessato</option><option>Cliente</option>
+          </select></div>
+        <div class="form-group"><label>Priorità</label>
+          <select id="f_priorita"><option>Bassa</option><option>Media</option><option>Alta</option></select></div>
+        <div class="form-group"><label>Prossima Azione</label>
+          <select id="f_prossima_azione">
+            <option>Inviare Email</option><option>Preparare preventivo</option>
+            <option>Chiudere il contratto</option><option>Chiamare</option>
+            <option>Delivery</option><option>Contatto futuro</option>
+          </select></div>
+        <div class="form-group"><label>Data Prossima Azione</label><input id="f_data_azione" type="date"></div>
+
+        <div class="form-section">Valori Economici</div>
+        <div class="form-group"><label>Valore Offerta (€)</label><input id="f_valore_offerta" type="number" min="0" step="0.01" placeholder="5000"></div>
+        <div class="form-group"><label>Valore Rinnovo (€/anno)</label><input id="f_valore_rinnovo" type="number" min="0" step="0.01" placeholder="1200"></div>
+        <div class="form-group"><label>Durata Collaborazione (mesi)</label><input id="f_durata_mesi" type="number" min="0" placeholder="12"></div>
+        <div class="form-group">
+          <label>Life Time Value (€) <small style="color:var(--muted);font-weight:400">— auto</small></label>
+          <input id="f_ltv" type="number" min="0" step="0.01" placeholder="calcolato automaticamente">
+        </div>
+        <div class="form-group"><label>Data Chiusura</label><input id="f_data_chiusura" type="date"></div>
+        <div class="form-group"><label>Data Rinnovo</label><input id="f_data_rinnovo" type="date"></div>
+
+        <div class="form-section">Note</div>
+        <div class="form-group full">
+          <label>Note</label>
+          <textarea id="f_note" placeholder="Aggiungi note sul contatto..."></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeContactModal()">Annulla</button>
+      <button class="btn btn-primary" id="saveBtn" onclick="saveContact()">💾 Salva Contatto</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ IMPORT MODAL ═══════════════ -->
+<div class="overlay hidden" id="importModal" onclick="if(event.target===this)closeImport()">
+  <div class="modal" style="max-width:720px">
+    <div class="modal-header">
+      <h2>📤 Importa Contatti</h2>
+      <button class="modal-close" onclick="closeImport()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="guide-box">
+        <h3>📖 Come importare</h3>
+        <ol>
+          <li>Scarica il file di esempio (CSV o XLSX)</li>
+          <li>Compila i tuoi dati — <strong>non modificare le intestazioni delle colonne</strong></li>
+          <li>Salva e carica il file qui sotto</li>
+          <li>Contatti con la stessa email vengono aggiornati, non duplicati</li>
+        </ol>
+        <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-success btn-sm" onclick="downloadSample('csv')">📥 Esempio CSV</button>
+          <button class="btn btn-success btn-sm" onclick="downloadSample('xlsx')">📥 Esempio XLSX</button>
+        </div>
+      </div>
+      <div class="guide-box">
+        <h3>📋 Colonne del file</h3>
+        <div class="col-grid" id="colGrid"></div>
+      </div>
+      <div class="drop-zone" id="dropZone"
+           onclick="document.getElementById('fileInput').click()"
+           ondragover="event.preventDefault();this.style.borderColor='#667eea'"
+           ondragleave="this.style.borderColor='var(--border)'"
+           ondrop="handleDrop(event)">
+        <div style="font-size:44px;margin-bottom:10px">📁</div>
+        <div style="font-size:15px;font-weight:600;margin-bottom:6px">Trascina qui il tuo file</div>
+        <div style="font-size:13px;color:var(--muted)">oppure clicca per selezionare — CSV o XLSX</div>
+        <input type="file" id="fileInput" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleFileSelect(event)">
+      </div>
+      <div id="importPreview" class="hidden"
+           style="margin-top:14px;padding:13px 16px;background:#f0fff4;border:1px solid #9ae6b4;border-radius:9px;font-size:13.5px;"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeImport()">Chiudi</button>
+      <button class="btn btn-primary hidden" id="confirmImportBtn" onclick="confirmImport()">✅ Conferma Importazione</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast">
+  <span id="toastIcon">✓</span><span id="toastMsg"></span>
+</div>
+
+<script>
+// ─────────────────────────────────────────────
+// SUPABASE CONFIG
+// ─────────────────────────────────────────────
+const SUPABASE_URL = 'https://qabqqizrlzsswuervggx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_kb1b29guFbEOKk-J-bDdeA_fE_KYUN3';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+const STAGES = ['Cold call','Email inviata','Call fissata','Preventivo inviato','Call annullata','Followup inviato','Non interessato','Cliente'];
+const PRIORITIES = ['Bassa','Media','Alta'];
+const NEXT_ACTIONS = ['Inviare Email','Preparare preventivo','Chiudere il contratto','Chiamare','Delivery','Contatto futuro'];
+
+const STAGE_CLASS = {
+  'Cold call':'s-cold-call','Email inviata':'s-email-inviata','Call fissata':'s-call-fissata',
+  'Preventivo inviato':'s-preventivo','Call annullata':'s-call-annullata','Followup inviato':'s-followup',
+  'Non interessato':'s-non-interessato','Cliente':'s-cliente'
+};
+const STAGE_COLOR = {
+  'Cold call':'#c53030','Email inviata':'#2b6cb0','Call fissata':'#6b46c1','Preventivo inviato':'#c05621',
+  'Call annullata':'#e53e3e','Followup inviato':'#2c7a7b','Non interessato':'#718096','Cliente':'#276749'
+};
+const PRIO_CLASS = {'Alta':'p-alta','Media':'p-media','Bassa':'p-bassa'};
+
+const FIELDS = ['nome','cognome','azienda','ruolo','email','telefono','linkedin','sito',
+  'stage','priorita','prossima_azione','data_azione','valore_offerta','valore_rinnovo',
+  'durata_mesi','ltv','data_chiusura','data_rinnovo','note'];
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+let contacts = [];
+let currentView = 'dashboard';
+let editingId = null;
+let importBatch = null;
+let sortField = 'cognome', sortDir = 'asc';
+let fText = '', fStage = '', fPrio = '';
+
+// ─────────────────────────────────────────────
+// INIT
+// ─────────────────────────────────────────────
+async function init() {
+  // Column list
+  const cg = document.getElementById('colGrid');
+  FIELDS.forEach(f => cg.innerHTML += `<div class="col-item">${f}</div>`);
+
+  // LTV auto-calc
+  ['f_valore_offerta','f_valore_rinnovo','f_durata_mesi'].forEach(id =>
+    document.getElementById(id).addEventListener('input', calcLTV));
+
+  await loadContacts();
+
+  // Hide loader
+  const loader = document.getElementById('loader');
+  loader.style.opacity = '0';
+  setTimeout(() => loader.style.display = 'none', 300);
+}
+
+async function loadContacts() {
+  const { data, error } = await db.from('contacts').select('*').order('created_at', { ascending: false });
+  if (error) {
+    console.error(error);
+    document.getElementById('dbDot').classList.add('offline');
+    toast('Errore connessione database', 'err');
+    return;
+  }
+  contacts = data || [];
+  document.getElementById('dbDot').classList.remove('offline');
+  document.getElementById('sideCount').textContent = contacts.length;
+  renderView();
+}
+
+// ─────────────────────────────────────────────
+// NAVIGATION
+// ─────────────────────────────────────────────
+function navigate(view) {
+  currentView = view;
+  document.querySelectorAll('.nav-item[data-view]').forEach(el =>
+    el.classList.toggle('active', el.dataset.view === view));
+  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline' };
+  document.getElementById('pageTitle').textContent = titles[view] || '';
+  renderView();
+}
+
+function renderView() {
+  document.getElementById('sideCount').textContent = contacts.length;
+  if (currentView === 'dashboard') renderDashboard();
+  else if (currentView === 'contacts') renderContacts();
+  else if (currentView === 'pipeline') renderPipeline();
+}
+
+// ─────────────────────────────────────────────
+// DASHBOARD
+// ─────────────────────────────────────────────
+function renderDashboard() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const totalOff = contacts.reduce((s,c) => s+(parseFloat(c.valore_offerta)||0), 0);
+  const totalLTV = contacts.reduce((s,c) => s+(parseFloat(c.ltv)||0), 0);
+  const nClienti = contacts.filter(c => c.stage==='Cliente').length;
+  const nScadute = contacts.filter(c => c.data_azione && new Date(c.data_azione)<today).length;
+
+  const in7 = new Date(today); in7.setDate(in7.getDate()+7);
+  const upcoming = contacts
+    .filter(c => { if(!c.data_azione) return false; const d=new Date(c.data_azione); return d>=today && d<=in7; })
+    .sort((a,b) => new Date(a.data_azione)-new Date(b.data_azione)).slice(0,6);
+
+  const stageRows = STAGES.map(s => {
+    const n = contacts.filter(c=>c.stage===s).length;
+    const pct = contacts.length ? Math.round(n/contacts.length*100) : 0;
+    return `<div style="margin-bottom:9px">
+      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+        <span class="badge ${STAGE_CLASS[s]}">${s}</span>
+        <span style="font-size:12.5px;color:var(--muted)">${n}</span>
+      </div>
+      <div style="height:5px;background:#f0f2f7;border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${STAGE_COLOR[s]};border-radius:3px;transition:width .5s"></div>
+      </div></div>`;
+  }).join('');
+
+  const upRows = upcoming.length
+    ? upcoming.map(c => `
+      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+        <div class="avatar" style="background:${avatarColor(c)};width:32px;height:32px;font-size:12px">${initials(c)}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome||''} ${c.cognome||''}</div>
+          <div style="font-size:11.5px;color:var(--muted)">${c.prossima_azione||'—'}</div>
+        </div>
+        <div style="font-size:12.5px;color:#dd6b20;font-weight:500;white-space:nowrap">${fmtDate(c.data_azione)}</div>
+      </div>`).join('')
+    : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Nessuna azione nei prossimi 7 giorni 🎉</div>`;
+
+  document.getElementById('content').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card c-purple"><div class="stat-label">Totale Contatti</div><div class="stat-value">${contacts.length}</div><div class="stat-sub">nel CRM</div></div>
+      <div class="stat-card c-green"><div class="stat-label">Clienti Attivi</div><div class="stat-value">${nClienti}</div><div class="stat-sub">${contacts.length?Math.round(nClienti/contacts.length*100):0}% del totale</div></div>
+      <div class="stat-card c-orange"><div class="stat-label">Valore Pipeline</div><div class="stat-value">€${fmtMoney(totalOff)}</div><div class="stat-sub">offerte totali</div></div>
+      <div class="stat-card c-red"><div class="stat-label">Azioni Scadute</div><div class="stat-value">${nScadute}</div><div class="stat-sub">da aggiornare</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div class="table-card" style="padding:18px">
+        <div style="font-weight:700;margin-bottom:14px;font-size:14px">📊 Distribuzione Stage</div>
+        ${contacts.length ? stageRows : `<div class="empty" style="padding:20px"><div class="ei">📭</div><p>Nessun contatto</p></div>`}
+      </div>
+      <div class="table-card" style="padding:18px">
+        <div style="font-weight:700;margin-bottom:14px;font-size:14px">⚡ Prossime Azioni (7 giorni)</div>
+        ${upRows}
+      </div>
+    </div>
+    <div class="table-card" style="padding:18px">
+      <div style="font-weight:700;margin-bottom:14px;font-size:14px">💰 Riepilogo Economico</div>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div style="padding:14px;background:#f0fff4;border-radius:10px;text-align:center">
+          <div style="font-size:11.5px;color:#38a169;font-weight:600;margin-bottom:4px">VALORE TOTALE OFFERTE</div>
+          <div style="font-size:22px;font-weight:700;color:#276749">€${fmtMoney(totalOff)}</div>
+        </div>
+        <div style="padding:14px;background:#ebf4ff;border-radius:10px;text-align:center">
+          <div style="font-size:11.5px;color:#2b6cb0;font-weight:600;margin-bottom:4px">LIFE TIME VALUE TOTALE</div>
+          <div style="font-size:22px;font-weight:700;color:#2a4365">€${fmtMoney(totalLTV)}</div>
+        </div>
+        <div style="padding:14px;background:#faf5ff;border-radius:10px;text-align:center">
+          <div style="font-size:11.5px;color:#6b46c1;font-weight:600;margin-bottom:4px">LTV MEDIO / CLIENTE</div>
+          <div style="font-size:22px;font-weight:700;color:#44337a">€${fmtMoney(nClienti?totalLTV/nClienti:0)}</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─────────────────────────────────────────────
+// CONTACTS
+// ─────────────────────────────────────────────
+function renderContacts() {
+  const list = getFiltered();
+  const today = new Date(); today.setHours(0,0,0,0);
+  const in3 = new Date(today); in3.setDate(in3.getDate()+3);
+
+  const rows = list.length ? list.map(c => {
+    let dateHtml = '';
+    if (c.data_azione) {
+      const d = new Date(c.data_azione);
+      let cls = d < today ? 'date-exp' : d <= in3 ? 'date-soon' : '';
+      dateHtml = `<div class="${cls}" style="font-size:12px">${fmtDate(c.data_azione)}${cls==='date-exp'?' ⚠️':''}</div>`;
+    }
+    const links = [
+      c.linkedin ? `<a class="btn-icon btn-link" href="${c.linkedin}" target="_blank" onclick="event.stopPropagation()" title="LinkedIn" style="font-size:11px;font-weight:700">in</a>` : '',
+      c.sito     ? `<a class="btn-icon btn-link" href="${c.sito}" target="_blank" onclick="event.stopPropagation()" title="Sito Web">🌐</a>` : '',
+      c.email    ? `<a class="btn-icon btn-link" href="mailto:${c.email}" onclick="event.stopPropagation()" title="Email">✉️</a>` : '',
+    ].join('');
+    return `<tr onclick="openContactModal('${c.id}')">
+      <td><div class="contact-cell">
+        <div class="avatar" style="background:${avatarColor(c)}">${initials(c)}</div>
+        <div><div class="contact-name">${c.nome||''} ${c.cognome||''}</div>
+        <div class="contact-sub">${c.ruolo?c.ruolo+' @ ':''}${c.azienda||''}</div></div>
+      </div></td>
+      <td><span class="badge ${STAGE_CLASS[c.stage]||''}">${c.stage||'—'}</span></td>
+      <td><span class="badge ${PRIO_CLASS[c.priorita]||''}">${c.priorita||'—'}</span></td>
+      <td><div style="font-size:12.5px">${c.prossima_azione||'—'}</div>${dateHtml}</td>
+      <td class="money">${c.valore_offerta?'€'+fmtMoney(c.valore_offerta):'<span style="color:var(--muted)">—</span>'}</td>
+      <td class="money">${c.ltv?'€'+fmtMoney(c.ltv):'<span style="color:var(--muted)">—</span>'}</td>
+      <td><div class="action-btns" onclick="event.stopPropagation()">
+        ${links}
+        <button class="btn-icon btn-edit" onclick="openContactModal('${c.id}')" title="Modifica">✏️</button>
+        <button class="btn-icon btn-del" onclick="deleteContact('${c.id}')" title="Elimina">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="7"><div class="empty">
+    <div class="ei">👥</div><h3>Nessun contatto trovato</h3><p>Aggiungi il tuo primo contatto</p>
+  </div></td></tr>`;
+
+  document.getElementById('content').innerHTML = `
+    <div class="filter-bar">
+      <input type="text" class="filter-input" placeholder="🔍 Cerca per nome, azienda, email..." value="${fText}"
+        oninput="fText=this.value;renderContacts()">
+      <select class="filter-select" onchange="fStage=this.value;renderContacts()">
+        <option value="">Tutti gli stage</option>
+        ${STAGES.map(s=>`<option value="${s}"${fStage===s?' selected':''}>${s}</option>`).join('')}
+      </select>
+      <select class="filter-select" onchange="fPrio=this.value;renderContacts()">
+        <option value="">Tutte le priorità</option>
+        ${PRIORITIES.map(p=>`<option value="${p}"${fPrio===p?' selected':''}>${p}</option>`).join('')}
+      </select>
+      <span style="font-size:12.5px;color:var(--muted);white-space:nowrap">${list.length} contatti</span>
+    </div>
+    <div class="table-card">
+      <table>
+        <thead><tr>
+          <th onclick="doSort('nome')">Contatto ${si('nome')}</th>
+          <th onclick="doSort('stage')">Stage ${si('stage')}</th>
+          <th onclick="doSort('priorita')">Priorità ${si('priorita')}</th>
+          <th onclick="doSort('data_azione')">Prossima Azione ${si('data_azione')}</th>
+          <th onclick="doSort('valore_offerta')">Offerta ${si('valore_offerta')}</th>
+          <th onclick="doSort('ltv')">LTV ${si('ltv')}</th>
+          <th>Link &amp; Azioni</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function getFiltered() {
+  return contacts
+    .filter(c => {
+      const q = fText.toLowerCase();
+      if (q && !`${c.nome} ${c.cognome} ${c.azienda} ${c.email} ${c.ruolo}`.toLowerCase().includes(q)) return false;
+      if (fStage && c.stage !== fStage) return false;
+      if (fPrio && c.priorita !== fPrio) return false;
+      return true;
+    })
+    .sort((a,b) => {
+      let va=a[sortField]||'', vb=b[sortField]||'';
+      if (!isNaN(parseFloat(va))&&!isNaN(parseFloat(vb))) { va=parseFloat(va)||0; vb=parseFloat(vb)||0; }
+      const r = va<vb?-1:va>vb?1:0;
+      return sortDir==='asc'?r:-r;
+    });
+}
+
+function doSort(f) {
+  sortField===f ? sortDir=(sortDir==='asc'?'desc':'asc') : (sortField=f, sortDir='asc');
+  renderContacts();
+}
+function si(f) { return sortField!==f?'↕':sortDir==='asc'?'↑':'↓'; }
+
+// ─────────────────────────────────────────────
+// PIPELINE
+// ─────────────────────────────────────────────
+function renderPipeline() {
+  const cols = STAGES.map(stage => {
+    const items = contacts.filter(c=>c.stage===stage);
+    const total = items.reduce((s,c)=>s+(parseFloat(c.valore_offerta)||0),0);
+    const cards = items.map(c=>`
+      <div class="pipe-card" onclick="openContactModal('${c.id}')">
+        <div class="pipe-card-name">${c.nome||''} ${c.cognome||''}</div>
+        <div class="pipe-card-co">${c.azienda||''}</div>
+        ${c.valore_offerta?`<div class="pipe-card-val">€${fmtMoney(c.valore_offerta)}</div>`:''}
+        ${c.priorita?`<span class="badge ${PRIO_CLASS[c.priorita]}" style="font-size:11px;margin-top:4px">${c.priorita}</span>`:''}
+      </div>`).join('') || `<div style="font-size:12.5px;color:var(--muted);text-align:center;padding:12px">Vuoto</div>`;
+    const col = STAGE_COLOR[stage];
+    return `<div class="pipe-col">
+      <div class="pipe-header" style="background:${col}18;color:${col}">
+        <span>${stage}</span><span class="pipe-count" style="background:${col}28">${items.length}</span>
+      </div>
+      ${total?`<div class="pipe-total">€${fmtMoney(total)}</div>`:''}
+      <div class="pipe-cards">${cards}</div>
+    </div>`;
+  }).join('');
+  document.getElementById('content').innerHTML = `<div class="pipeline-wrap">${cols}</div>`;
+}
+
+// ─────────────────────────────────────────────
+// CONTACT MODAL
+// ─────────────────────────────────────────────
+function openContactModal(id=null) {
+  editingId = id;
+  document.getElementById('contactModal').classList.remove('hidden');
+  if (id) {
+    const c = contacts.find(x=>x.id===id);
+    if (!c) return;
+    document.getElementById('modalTitle').textContent = `Modifica: ${c.nome||''} ${c.cognome||''}`;
+    FIELDS.forEach(f => { const el=document.getElementById('f_'+f); if(el) el.value=c[f]||''; });
+  } else {
+    document.getElementById('modalTitle').textContent = 'Nuovo Contatto';
+    FIELDS.forEach(f => { const el=document.getElementById('f_'+f); if(el) el.value=''; });
+    document.getElementById('f_stage').value = 'Cold call';
+    document.getElementById('f_priorita').value = 'Media';
+    document.getElementById('f_prossima_azione').value = 'Inviare Email';
+  }
+}
+
+function closeContactModal() {
+  document.getElementById('contactModal').classList.add('hidden');
+  editingId = null;
+}
+
+function calcLTV() {
+  const off  = parseFloat(document.getElementById('f_valore_offerta').value)||0;
+  const rin  = parseFloat(document.getElementById('f_valore_rinnovo').value)||0;
+  const mesi = parseFloat(document.getElementById('f_durata_mesi').value)||0;
+  if (off||rin||mesi) document.getElementById('f_ltv').value = (off + rin*(mesi/12)).toFixed(2);
+}
+
+async function saveContact() {
+  const nome    = document.getElementById('f_nome').value.trim();
+  const cognome = document.getElementById('f_cognome').value.trim();
+  if (!nome && !cognome) { toast('Inserisci almeno nome o cognome','err'); return; }
+
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = '⏳ Salvataggio...';
+
+  const record = {};
+  FIELDS.forEach(f => { const el=document.getElementById('f_'+f); if(el) record[f]=el.value.trim()||null; });
+
+  let error;
+  if (editingId) {
+    ({ error } = await db.from('contacts').update(record).eq('id', editingId));
+  } else {
+    record.id = uid();
+    ({ error } = await db.from('contacts').insert(record));
+  }
+
+  btn.disabled = false; btn.textContent = '💾 Salva Contatto';
+
+  if (error) { toast('Errore: '+error.message, 'err'); return; }
+  await loadContacts();
+  closeContactModal();
+  toast(editingId ? 'Contatto aggiornato ✓' : 'Contatto aggiunto ✓', 'ok');
+}
+
+async function deleteContact(id) {
+  if (!confirm('Eliminare questo contatto?')) return;
+  const { error } = await db.from('contacts').delete().eq('id', id);
+  if (error) { toast('Errore: '+error.message, 'err'); return; }
+  await loadContacts();
+  toast('Contatto eliminato', 'ok');
+}
+
+// ─────────────────────────────────────────────
+// IMPORT
+// ─────────────────────────────────────────────
+function openImport() {
+  importBatch = null;
+  document.getElementById('importModal').classList.remove('hidden');
+  document.getElementById('importPreview').classList.add('hidden');
+  document.getElementById('confirmImportBtn').classList.add('hidden');
+  document.getElementById('fileInput').value = '';
+  document.getElementById('dropZone').style.borderColor = 'var(--border)';
+}
+function closeImport() { document.getElementById('importModal').classList.add('hidden'); }
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').style.borderColor = 'var(--border)';
+  const f = e.dataTransfer.files[0]; if(f) processFile(f);
+}
+function handleFileSelect(e) { const f=e.target.files[0]; if(f) processFile(f); }
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext==='csv') {
+    const r=new FileReader(); r.onload=e=>parseCSV(e.target.result); r.readAsText(file,'UTF-8');
+  } else if (['xlsx','xls'].includes(ext)) {
+    const r=new FileReader();
+    r.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      processRows(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''}));
+    };
+    r.readAsBinaryString(file);
+  } else { toast('Formato non supportato. Usa CSV o XLSX','err'); }
+}
+
+function parseCSV(text) {
+  const lines = text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+  if (lines.length<2) { toast('File CSV vuoto','err'); return; }
+  const headers = splitCSV(lines[0]).map(h=>h.trim().replace(/^"|"$/g,''));
+  const rows = lines.slice(1).map(line=>{
+    const vals=splitCSV(line); const obj={};
+    headers.forEach((h,i)=>obj[h]=(vals[i]||'').trim().replace(/^"|"$/g,''));
+    return obj;
+  }).filter(r=>Object.values(r).some(v=>v));
+  processRows(rows);
+}
+
+function splitCSV(line) {
+  const res=[]; let cur='', inQ=false;
+  for(const ch of line){if(ch==='"')inQ=!inQ;else if(ch===','&&!inQ){res.push(cur);cur='';}else cur+=ch;}
+  res.push(cur); return res;
+}
+
+function processRows(rows) {
+  if(!rows.length){toast('Nessun dato trovato','err');return;}
+  importBatch = rows.map(row=>{const c={id:uid()};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
+  const prev=document.getElementById('importPreview');
+  prev.classList.remove('hidden');
+  prev.innerHTML=`<strong>✅ ${importBatch.length} contatti pronti per l'importazione</strong>
+    <div style="font-size:12px;color:var(--muted);margin-top:4px">Clicca "Conferma" per salvare su Supabase.</div>`;
+  document.getElementById('confirmImportBtn').classList.remove('hidden');
+}
+
+async function confirmImport() {
+  if(!importBatch) return;
+  const btn=document.getElementById('confirmImportBtn');
+  btn.disabled=true; btn.textContent='⏳ Importazione...';
+
+  // Upsert: update se stesso email, altrimenti insert
+  const { error } = await db.from('contacts').upsert(importBatch, { onConflict: 'id', ignoreDuplicates: false });
+
+  btn.disabled=false; btn.textContent='✅ Conferma Importazione';
+  if(error){toast('Errore importazione: '+error.message,'err');return;}
+
+  await loadContacts();
+  closeImport();
+  navigate('contacts');
+  toast(`Importati ${importBatch.length} contatti ✓`,'ok');
+  importBatch=null;
+}
+
+// ─────────────────────────────────────────────
+// SAMPLE DOWNLOAD
+// ─────────────────────────────────────────────
+function downloadSample(fmt) {
+  const s1={nome:'Mario',cognome:'Rossi',azienda:'Acme Srl',ruolo:'CEO',email:'mario.rossi@acme.com',
+    telefono:'+39 333 1234567',linkedin:'https://linkedin.com/in/mario-rossi',sito:'https://acme.com',
+    stage:'Email inviata',priorita:'Alta',prossima_azione:'Chiamare',data_azione:'2026-04-01',
+    valore_offerta:'5000',valore_rinnovo:'1200',durata_mesi:'12',ltv:'6200',
+    data_chiusura:'2026-05-01',data_rinnovo:'2027-05-01',note:'Interessato al piano Enterprise'};
+  const s2={nome:'Laura',cognome:'Bianchi',azienda:'Beta SpA',ruolo:'Marketing Director',
+    email:'laura.bianchi@beta.it',telefono:'+39 02 9876543',linkedin:'https://linkedin.com/in/laura-bianchi',
+    sito:'https://beta.it',stage:'Call fissata',priorita:'Media',prossima_azione:'Preparare preventivo',
+    data_azione:'2026-03-25',valore_offerta:'8500',valore_rinnovo:'2400',durata_mesi:'24',ltv:'66100',
+    data_chiusura:'',data_rinnovo:'',note:'Budget approvato. Vuole demo.'};
+
+  if(fmt==='csv'){
+    const hdr=FIELDS.join(',');
+    const r=(s)=>FIELDS.map(f=>`"${(s[f]||'').replace(/"/g,'""')}"`).join(',');
+    dlBlob(new Blob(['\ufeff'+hdr+'\n'+r(s1)+'\n'+r(s2)],{type:'text/csv;charset=utf-8'}),'crm_esempio.csv');
+  } else {
+    const ws=XLSX.utils.json_to_sheet([s1,s2],{header:FIELDS});
+    ws['!cols']=FIELDS.map(f=>({wch:Math.max(f.length+2,15)}));
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Contatti');
+    XLSX.writeFile(wb,'crm_esempio.xlsx');
+  }
+  toast('File di esempio scaricato','ok');
+}
+
+// ─────────────────────────────────────────────
+// EXPORT
+// ─────────────────────────────────────────────
+function exportCSV() {
+  if(!contacts.length){toast('Nessun contatto da esportare','err');return;}
+  const hdr=FIELDS.join(',');
+  const rows=contacts.map(c=>FIELDS.map(f=>`"${(c[f]||'').replace(/"/g,'""')}"`).join(','));
+  dlBlob(new Blob(['\ufeff'+hdr+'\n'+rows.join('\n')],{type:'text/csv;charset=utf-8'}),
+    `crm_export_${new Date().toISOString().slice(0,10)}.csv`);
+  toast(`Esportati ${contacts.length} contatti`,'ok');
+}
+
+// ─────────────────────────────────────────────
+// UTILS
+// ─────────────────────────────────────────────
+function uid() { return Date.now().toString(36)+Math.random().toString(36).slice(2); }
+function fmtDate(s) { if(!s)return''; const p=s.split('-'); return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:s; }
+function fmtMoney(v) { return (parseFloat(v)||0).toLocaleString('it-IT',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+function initials(c) { return ((c.nome||'?')[0]+((c.cognome||'')[0]||'')).toUpperCase(); }
+const COLORS=['#667eea','#764ba2','#e53e3e','#dd6b20','#38a169','#2c7a7b','#d53f8c','#2b6cb0','#c05621','#6b46c1'];
+function avatarColor(c) { let h=0; for(const ch of (c.nome||'')+(c.cognome||'')) h=ch.charCodeAt(0)+((h<<5)-h); return COLORS[Math.abs(h)%COLORS.length]; }
+function dlBlob(blob,name) { const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;a.click();URL.revokeObjectURL(url); }
+
+let toastTimer;
+function toast(msg,type='ok') {
+  const el=document.getElementById('toast');
+  document.getElementById('toastIcon').textContent=type==='ok'?'✓':'✕';
+  document.getElementById('toastMsg').textContent=msg;
+  el.className=`toast ${type} show`;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// BOOT
+init();
+</script>
+</body>
+</html>
