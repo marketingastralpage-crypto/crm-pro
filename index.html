@@ -532,6 +532,7 @@ const FIELDS = ['nome','cognome','azienda','ruolo','email','telefono','linkedin'
 // STATE
 // ─────────────────────────────────────────────
 let contacts = [];
+let currentUser = null;
 let currentView = 'dashboard';
 let editingId = null;
 let importBatch = null;
@@ -547,6 +548,7 @@ function showLoginScreen() {
 }
 
 function hideLoginScreen(user) {
+  currentUser = user;
   document.getElementById('loginScreen').classList.add('hidden');
   document.getElementById('userEmail').textContent = user.email || '';
 }
@@ -929,6 +931,7 @@ async function saveContact() {
     ({ error } = await db.from('contacts').update(record).eq('id', editingId));
   } else {
     record.id = uid();
+    record.user_id = currentUser.id;
     ({ error } = await db.from('contacts').insert(record));
   }
 
@@ -1271,17 +1274,13 @@ async function fetchEmails(forceSync = false) {
 
   if (forceSync) {
     try {
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/imap-fetch`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-        body: JSON.stringify({ folder: emailState.folder })
+      const { data: r, error: fnErr } = await db.functions.invoke('imap-fetch', {
+        body: { folder: emailState.folder }
       });
-      if (!resp.ok) {
-        const err = await resp.json().catch(() => ({}));
-        toast('Errore sync IMAP: ' + (err.error || resp.statusText), 'err');
+      if (fnErr) {
+        toast('Errore sync IMAP: ' + fnErr.message, 'err');
       } else {
-        const r = await resp.json();
-        toast(`Sincronizzate ${r.count || 0} email ✓`, 'ok');
+        toast(`Sincronizzate ${r?.count || 0} email ✓`, 'ok');
       }
     } catch (e) {
       toast('Edge function non raggiungibile: ' + e.message, 'err');
@@ -1434,13 +1433,10 @@ async function sendReply() {
 
   const replySubject = rc.subject.startsWith('Re:') ? rc.subject : 'Re: ' + rc.subject;
   try {
-    const resp = await fetch(`${SUPABASE_URL}/functions/v1/smtp-send`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
-      body: JSON.stringify({ to: rc.to, subject: replySubject, body, inReplyTo: rc.messageId, threadId: rc.threadId })
+    const { error: fnErr } = await db.functions.invoke('smtp-send', {
+      body: { to: rc.to, subject: replySubject, body, inReplyTo: rc.messageId, threadId: rc.threadId }
     });
-    const result = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(result.error || resp.statusText);
+    if (fnErr) throw new Error(fnErr.message);
     toast('Risposta inviata ✓', 'ok');
     document.getElementById('replyBody').value = '';
     if (emailState.selectedId) openEmail(emailState.selectedId);
