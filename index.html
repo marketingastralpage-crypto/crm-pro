@@ -183,9 +183,137 @@ textarea { resize: vertical; min-height: 78px; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-thumb { background: #cbd5e0; border-radius: 3px; }
 ::-webkit-scrollbar-track { background: transparent; }
+
+/* ── SETTINGS ── */
+.settings-card { background: #fff; border-radius: 14px; border: 1px solid var(--border); padding: 28px 32px; max-width: 580px; }
+.settings-card-icon { font-size: 38px; margin-bottom: 10px; }
+.settings-card h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.settings-card > p { font-size: 13px; color: var(--muted); margin-bottom: 24px; line-height: 1.5; }
+.settings-form-col { display: flex; flex-direction: column; gap: 16px; }
+.pwd-wrap { position: relative; }
+.pwd-wrap input { width: 100%; padding-right: 44px; }
+.pwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; color: var(--muted); line-height: 1; padding: 2px; }
+.settings-footer { margin-top: 26px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.settings-last-save { font-size: 12px; color: var(--muted); }
+
+/* ── LOGIN ── */
+#loginScreen {
+  position: fixed; inset: 0; z-index: 9999;
+  background: linear-gradient(135deg, #0f0f1a 0%, #1a1a2e 50%, #16213e 100%);
+  display: flex; align-items: center; justify-content: center;
+}
+#loginScreen.hidden { display: none; }
+.login-box {
+  background: #fff; border-radius: 18px; padding: 44px 40px;
+  width: 100%; max-width: 400px;
+  box-shadow: 0 25px 60px rgba(0,0,0,0.4);
+}
+.login-logo { text-align: center; margin-bottom: 32px; }
+.login-logo .logo-circle {
+  width: 64px; height: 64px; border-radius: 18px; margin: 0 auto 14px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex; align-items: center; justify-content: center; font-size: 30px;
+}
+.login-logo h2 { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.login-logo p { font-size: 13px; color: var(--muted); }
+.login-field { margin-bottom: 18px; }
+.login-field label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 7px; }
+.login-field input {
+  width: 100%; padding: 11px 14px; border: 1.5px solid var(--border);
+  border-radius: 9px; font-size: 14px; color: var(--text);
+  background: #f8f9fc; transition: border-color .2s, box-shadow .2s; outline: none;
+}
+.login-field input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(102,126,234,0.15); background: #fff; }
+.login-field .lpwd-wrap { position: relative; }
+.login-field .lpwd-wrap input { padding-right: 44px; }
+.login-field .lpwd-toggle { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; font-size: 15px; color: var(--muted); }
+.login-btn {
+  width: 100%; padding: 13px; margin-top: 8px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff; border: none; border-radius: 9px;
+  font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: opacity .2s, transform .1s;
+}
+.login-btn:hover { opacity: 0.92; }
+.login-btn:active { transform: scale(0.98); }
+.login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.login-error {
+  margin-top: 14px; padding: 10px 14px;
+  background: #fff5f5; border: 1px solid #feb2b2; border-radius: 8px;
+  font-size: 13px; color: #c53030; display: none;
+}
+.login-error.show { display: block; }
+/* ── LOGOUT BUTTON ── */
+.btn-logout { background: none; border: 1px solid rgba(255,255,255,0.15); color: rgba(255,255,255,0.5); font-size: 11.5px; padding: 4px 9px; border-radius: 6px; cursor: pointer; transition: all .18s; }
+.btn-logout:hover { border-color: rgba(255,255,255,0.35); color: rgba(255,255,255,0.85); }
+
+/* ── EMAIL SECTION ── */
+.email-layout { display:flex; height:100%; min-height:400px; background:#fff; border-radius:12px; border:1px solid var(--border); overflow:hidden; }
+.email-folders { width:196px; border-right:1px solid var(--border); background:#f8fafc; flex-shrink:0; overflow-y:auto; padding:10px 0; }
+.email-folders-label { padding:8px 16px 4px; font-size:10.5px; font-weight:600; color:var(--muted); letter-spacing:.9px; text-transform:uppercase; }
+.email-folder-item { display:flex; align-items:center; gap:9px; padding:9px 14px; cursor:pointer; font-size:13px; color:var(--text); transition:background .12s; }
+.email-folder-item:hover { background:rgba(102,126,234,.09); }
+.email-folder-item.active { background:rgba(102,126,234,.14); color:#5a67d8; font-weight:600; }
+.email-unread-count { margin-left:auto; background:#5a67d8; color:#fff; border-radius:12px; font-size:10.5px; padding:1px 7px; font-weight:700; }
+.email-list-panel { width:310px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--border); }
+.email-list-item { padding:11px 14px; border-bottom:1px solid #f0f2f7; cursor:pointer; transition:background .12s; position:relative; }
+.email-list-item:hover { background:#f8fafc; }
+.email-list-item.active { background:#ebf4ff; border-left:3px solid #667eea; }
+.email-item-row1 { display:flex; align-items:baseline; gap:6px; margin-bottom:2px; }
+.email-item-from { font-size:13px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text); }
+.email-list-item.unread .email-item-from { font-weight:700; }
+.email-item-date { font-size:11px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
+.email-item-subject { font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+.email-list-item.unread .email-item-subject { font-weight:600; }
+.email-item-preview { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.email-detail-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; min-width:0; }
+.email-no-select { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); gap:14px; font-size:14px; padding:40px; }
+.email-thread-header { padding:16px 22px 12px; border-bottom:1px solid var(--border); background:#fafbff; flex-shrink:0; position:sticky; top:0; z-index:2; }
+.email-thread-subject { font-size:17px; font-weight:700; margin-bottom:3px; }
+.email-thread-meta { font-size:12px; color:var(--muted); }
+.email-message { padding:14px 22px; border-bottom:1px solid #f0f2f7; }
+.email-message-header { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
+.email-message-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,#667eea,#764ba2); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; flex-shrink:0; }
+.email-message-from { font-weight:600; font-size:13.5px; line-height:1.3; }
+.email-message-to { font-size:11.5px; color:var(--muted); }
+.email-message-date { margin-left:auto; font-size:11.5px; color:var(--muted); white-space:nowrap; padding-left:10px; }
+.email-message-content { font-size:13.5px; line-height:1.65; overflow-wrap:break-word; }
+.email-message-body { white-space:pre-wrap; font-family:inherit; }
+.email-html-frame { width:100%; border:none; min-height:60px; display:block; }
+.email-reply-box { margin:14px 22px 22px; border:1px solid var(--border); border-radius:12px; overflow:hidden; box-shadow:0 2px 10px rgba(0,0,0,.06); flex-shrink:0; }
+.email-reply-header { padding:9px 14px; background:#f8fafc; border-bottom:1px solid var(--border); font-size:12.5px; color:var(--muted); }
+.email-reply-textarea { width:100%; border:none; outline:none; padding:12px 14px; font-size:13.5px; min-height:110px; resize:vertical; font-family:inherit; line-height:1.5; display:block; }
+.email-reply-footer { padding:9px 14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:#f8fafc; gap:12px; }
+.email-reply-from { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
 </style>
 </head>
 <body>
+
+<!-- ═══════════════ LOGIN SCREEN ═══════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-circle">💼</div>
+      <h2>CRM Pro</h2>
+      <p>Inserisci le tue credenziali per accedere</p>
+    </div>
+    <form id="loginForm" onsubmit="handleLogin(event)">
+      <div class="login-field">
+        <label for="loginEmail">Email</label>
+        <input type="email" id="loginEmail" placeholder="nome@azienda.com" autocomplete="username" required>
+      </div>
+      <div class="login-field">
+        <label for="loginPassword">Password</label>
+        <div class="lpwd-wrap">
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" required>
+          <button type="button" class="lpwd-toggle" onclick="toggleLoginPwd()">👁</button>
+        </div>
+      </div>
+      <button type="submit" class="login-btn" id="loginBtn">Accedi</button>
+      <div class="login-error" id="loginError"></div>
+    </form>
+  </div>
+</div>
 
 <!-- FULL SCREEN LOADER -->
 <div id="loader">
@@ -212,6 +340,9 @@ textarea { resize: vertical; min-height: 78px; }
       <div class="nav-item" data-view="pipeline" onclick="navigate('pipeline')">
         <span class="ni">🔄</span><span>Pipeline</span>
       </div>
+      <div class="nav-item" data-view="email" onclick="navigate('email')">
+        <span class="ni">📧</span><span>Email</span>
+      </div>
     </div>
     <div class="nav-section">
       <div class="nav-section-title">Strumenti</div>
@@ -222,10 +353,22 @@ textarea { resize: vertical; min-height: 78px; }
         <span class="ni">📥</span><span>Esporta CSV</span>
       </div>
     </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Sistema</div>
+      <div class="nav-item" data-view="settings" onclick="navigate('settings')">
+        <span class="ni">⚙️</span><span>Impostazioni</span>
+      </div>
+    </div>
   </nav>
-  <div class="sidebar-footer">
-    <span><span class="db-dot" id="dbDot"></span>Supabase</span>
-    <span><span id="sideCount">0</span> contatti</span>
+  <div class="sidebar-footer" style="flex-direction:column;align-items:flex-start;gap:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%">
+      <span><span class="db-dot" id="dbDot"></span>Supabase</span>
+      <span><span id="sideCount">0</span> contatti</span>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:space-between;width:100%;gap:6px">
+      <span id="userEmail" style="font-size:11px;color:rgba(255,255,255,0.35);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1"></span>
+      <button class="btn-logout" onclick="handleLogout()">Esci</button>
+    </div>
   </div>
 </aside>
 
@@ -233,7 +376,7 @@ textarea { resize: vertical; min-height: 78px; }
 <div class="main">
   <div class="topbar">
     <div class="topbar-title" id="pageTitle">Dashboard</div>
-    <div class="topbar-actions">
+    <div class="topbar-actions" id="topbarActions">
       <button class="btn btn-secondary" onclick="openImport()">📤 Importa</button>
       <button class="btn btn-primary" onclick="openContactModal()">＋ Aggiungi Contatto</button>
     </div>
@@ -396,18 +539,92 @@ let sortField = 'cognome', sortDir = 'asc';
 let fText = '', fStage = '', fPrio = '';
 
 // ─────────────────────────────────────────────
+// AUTH
+// ─────────────────────────────────────────────
+function showLoginScreen() {
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loader').style.display = 'none';
+}
+
+function hideLoginScreen(user) {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('userEmail').textContent = user.email || '';
+}
+
+function toggleLoginPwd() {
+  const inp = document.getElementById('loginPassword');
+  const btn = inp.parentElement.querySelector('.lpwd-toggle');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function handleLogin(e) {
+  e.preventDefault();
+  const email    = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn      = document.getElementById('loginBtn');
+  const errEl    = document.getElementById('loginError');
+
+  btn.disabled = true; btn.textContent = 'Accesso in corso...';
+  errEl.classList.remove('show');
+
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    errEl.textContent = 'Credenziali non valide. Riprova.';
+    errEl.classList.add('show');
+    btn.disabled = false; btn.textContent = 'Accedi';
+    return;
+  }
+
+  hideLoginScreen(data.user);
+  await bootApp();
+}
+
+async function handleLogout() {
+  await db.auth.signOut();
+  document.getElementById('userEmail').textContent = '';
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+  document.getElementById('loginError').classList.remove('show');
+  showLoginScreen();
+}
+
+// ─────────────────────────────────────────────
 // INIT
 // ─────────────────────────────────────────────
 async function init() {
+  // Check existing session
+  const { data: { session } } = await db.auth.getSession();
+
+  if (!session) {
+    showLoginScreen();
+    return;
+  }
+
+  hideLoginScreen(session.user);
+  await bootApp();
+
+  // Listen for session expiry
+  db.auth.onAuthStateChange((event) => {
+    if (event === 'SIGNED_OUT') showLoginScreen();
+  });
+}
+
+async function bootApp() {
   // Column list
   const cg = document.getElementById('colGrid');
-  FIELDS.forEach(f => cg.innerHTML += `<div class="col-item">${f}</div>`);
+  if (!cg.children.length) {
+    FIELDS.forEach(f => cg.innerHTML += `<div class="col-item">${f}</div>`);
+  }
 
   // LTV auto-calc
-  ['f_valore_offerta','f_valore_rinnovo','f_durata_mesi'].forEach(id =>
-    document.getElementById(id).addEventListener('input', calcLTV));
+  ['f_valore_offerta','f_valore_rinnovo','f_durata_mesi'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && !el.dataset.ltv) { el.dataset.ltv = '1'; el.addEventListener('input', calcLTV); }
+  });
 
-  await loadContacts();
+  await Promise.all([loadContacts(), loadSmtpSettings()]);
 
   // Hide loader
   const loader = document.getElementById('loader');
@@ -436,9 +653,27 @@ function navigate(view) {
   currentView = view;
   document.querySelectorAll('.nav-item[data-view]').forEach(el =>
     el.classList.toggle('active', el.dataset.view === view));
-  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline' };
+  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline', email:'Email', settings:'Impostazioni' };
   document.getElementById('pageTitle').textContent = titles[view] || '';
+  // Reset content layout for non-email views
+  const content = document.getElementById('content');
+  content.style.padding = '';
+  content.style.overflow = '';
+  updateTopbar(view);
   renderView();
+}
+
+function updateTopbar(view) {
+  const el = document.getElementById('topbarActions');
+  if (!el) return;
+  if (view === 'email') {
+    el.innerHTML = `<button class="btn btn-secondary" onclick="syncEmails()">🔄 Sincronizza Email</button>`;
+  } else if (view === 'settings') {
+    el.innerHTML = '';
+  } else {
+    el.innerHTML = `<button class="btn btn-secondary" onclick="openImport()">📤 Importa</button>
+      <button class="btn btn-primary" onclick="openContactModal()">＋ Aggiungi Contatto</button>`;
+  }
 }
 
 function renderView() {
@@ -446,6 +681,8 @@ function renderView() {
   if (currentView === 'dashboard') renderDashboard();
   else if (currentView === 'contacts') renderContacts();
   else if (currentView === 'pipeline') renderPipeline();
+  else if (currentView === 'email') renderEmail();
+  else if (currentView === 'settings') renderSettings();
 }
 
 // ─────────────────────────────────────────────
@@ -849,6 +1086,401 @@ function toast(msg,type='ok') {
   document.getElementById('toastMsg').textContent=msg;
   el.className=`toast ${type} show`;
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// ─────────────────────────────────────────────
+// SMTP SETTINGS
+// ─────────────────────────────────────────────
+let smtpSettings = null;
+
+async function loadSmtpSettings() {
+  const { data, error } = await db.from('smtp_settings').select('*').limit(1).maybeSingle();
+  if (!error && data) smtpSettings = data;
+}
+
+function renderSettings() {
+  const s = smtpSettings || {};
+  document.getElementById('content').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:18px;max-width:580px">
+
+      <div class="settings-card">
+        <div class="settings-card-icon">🔐</div>
+        <h3>Credenziali Account Email</h3>
+        <p>Email e password condivise tra SMTP e IMAP.</p>
+        <div class="settings-form-col">
+          <div class="form-group">
+            <label>Email *</label>
+            <input id="s_user_email" type="email" placeholder="noreply@tuaazienda.com" value="${escHtml(s.user_email||'')}">
+          </div>
+          <div class="form-group">
+            <label>Password</label>
+            <div class="pwd-wrap">
+              <input id="s_password" type="password" placeholder="••••••••" value="${escHtml(s.password||'')}">
+              <button type="button" class="pwd-toggle" id="pwdToggle" onclick="toggleSmtpPwd()">👁</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-icon">📤</div>
+        <h3>SMTP — Invio Email</h3>
+        <p>Server utilizzato per inviare email dal CRM.</p>
+        <div class="settings-form-col">
+          <div class="form-group">
+            <label>Host SMTP</label>
+            <input id="s_host" type="text" placeholder="es. gnld1014.siteground.eu" value="${escHtml(s.host||'')}">
+          </div>
+          <div class="form-group">
+            <label>Porta SMTP</label>
+            <input id="s_porta" type="number" placeholder="es. 587" value="${s.porta||''}">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-icon">📥</div>
+        <h3>IMAP — Ricezione Email</h3>
+        <p>Server utilizzato per ricevere e leggere le email in entrata.</p>
+        <div class="settings-form-col">
+          <div class="form-group">
+            <label>Host IMAP</label>
+            <input id="s_imap_host" type="text" placeholder="es. imap.siteground.eu" value="${escHtml(s.imap_host||'')}">
+          </div>
+          <div class="form-group">
+            <label>Porta IMAP</label>
+            <input id="s_imap_porta" type="number" placeholder="es. 993" value="${s.imap_porta||''}">
+          </div>
+        </div>
+      </div>
+
+      <div class="settings-footer" style="margin-top:0">
+        <button class="btn btn-primary" onclick="saveSmtpSettings()">💾 Salva Impostazioni</button>
+        ${s.updated_at ? `<span class="settings-last-save">Ultimo salvataggio: ${new Date(s.updated_at).toLocaleString('it-IT')}</span>` : ''}
+      </div>
+
+    </div>
+  `;
+}
+
+function toggleSmtpPwd() {
+  const inp = document.getElementById('s_password');
+  const btn = document.getElementById('pwdToggle');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
+  else { inp.type = 'password'; btn.textContent = '👁'; }
+}
+
+async function saveSmtpSettings() {
+  const user_email = document.getElementById('s_user_email').value.trim();
+  const password   = document.getElementById('s_password').value;
+  const host       = document.getElementById('s_host').value.trim();
+  const porta      = parseInt(document.getElementById('s_porta').value) || null;
+
+  if (!user_email) { toast('Inserisci l\'email mittente', 'err'); return; }
+
+  const imap_host  = document.getElementById('s_imap_host').value.trim();
+  const imap_porta = parseInt(document.getElementById('s_imap_porta').value) || null;
+
+  const payload = { user_email, password, host, porta, imap_host, imap_porta, updated_at: new Date().toISOString() };
+  let error;
+
+  if (smtpSettings?.id) {
+    ({ error } = await db.from('smtp_settings').update(payload).eq('id', smtpSettings.id));
+    if (!error) smtpSettings = { ...smtpSettings, ...payload };
+  } else {
+    const { data, error: err } = await db.from('smtp_settings').insert(payload).select().single();
+    error = err;
+    if (!error) smtpSettings = data;
+  }
+
+  if (error) { toast('Errore salvataggio: ' + error.message, 'err'); return; }
+  renderSettings();
+  toast('Impostazioni SMTP salvate ✓', 'ok');
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─────────────────────────────────────────────
+// EMAIL
+// ─────────────────────────────────────────────
+let emailState = { folder: 'INBOX', emails: [], selectedId: null, replyContext: null };
+
+function isEmailConfigured() {
+  return !!(smtpSettings && smtpSettings.host && smtpSettings.imap_host && smtpSettings.user_email);
+}
+
+async function renderEmail() {
+  if (!isEmailConfigured()) {
+    document.getElementById('content').innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:420px;flex-direction:column;gap:20px;text-align:center">
+        <div style="font-size:66px">📭</div>
+        <h2 style="font-size:20px;font-weight:700">Email non configurata</h2>
+        <p style="color:var(--muted);font-size:14px;max-width:400px;line-height:1.7">
+          Per usare la sezione Email devi configurare i server <strong>SMTP</strong> (invio)
+          e <strong>IMAP</strong> (ricezione) nelle impostazioni.
+        </p>
+        <button class="btn btn-primary" onclick="navigate('settings')" style="padding:11px 26px;font-size:14px">
+          ⚙️ Configura SMTP &amp; IMAP
+        </button>
+      </div>`;
+    return;
+  }
+  // Remove content padding for full-height Gmail layout
+  const content = document.getElementById('content');
+  content.style.padding = '0';
+  content.style.overflow = 'hidden';
+  _renderEmailShell();
+  await fetchEmails();
+}
+
+function _renderEmailShell() {
+  document.getElementById('content').innerHTML = `
+    <div class="email-layout" id="emailLayout">
+      <div class="email-folders">
+        <div class="email-folders-label">Cartelle</div>
+        <div class="email-folder-item active" id="efolder-INBOX" onclick="emailSwitchFolder('INBOX')">
+          <span>📥</span><span>Posta in arrivo</span>
+          <span class="email-unread-count hidden" id="ecount-INBOX">0</span>
+        </div>
+        <div class="email-folder-item" id="efolder-SENT" onclick="emailSwitchFolder('SENT')">
+          <span>📤</span><span>Inviata</span>
+        </div>
+        <div class="email-folders-label" style="margin-top:12px">Azioni</div>
+        <div class="email-folder-item" onclick="syncEmails()">
+          <span>🔄</span><span id="syncLabel">Sincronizza</span>
+        </div>
+      </div>
+      <div class="email-list-panel" id="emailListPanel">
+        <div class="loading-wrap"><div class="spinner"></div></div>
+      </div>
+      <div class="email-detail-panel" id="emailDetailPanel">
+        <div class="email-no-select">
+          <span style="font-size:52px">✉️</span>
+          <span>Seleziona un'email da leggere</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function fetchEmails(forceSync = false) {
+  const listPanel = document.getElementById('emailListPanel');
+  if (!listPanel) return;
+  listPanel.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
+
+  if (forceSync) {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/imap-fetch`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+        body: JSON.stringify({ folder: emailState.folder })
+      });
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({}));
+        toast('Errore sync IMAP: ' + (err.error || resp.statusText), 'err');
+      } else {
+        const r = await resp.json();
+        toast(`Sincronizzate ${r.count || 0} email ✓`, 'ok');
+      }
+    } catch (e) {
+      toast('Edge function non raggiungibile: ' + e.message, 'err');
+    }
+  }
+
+  const { data, error } = await db
+    .from('emails')
+    .select('id, message_id, thread_id, from_name, from_email, to, subject, date, folder, read, text_body')
+    .eq('folder', emailState.folder)
+    .order('date', { ascending: false })
+    .limit(50);
+
+  if (error) {
+    listPanel.innerHTML = `<div class="empty"><div class="ei">⚠️</div><h3>Errore</h3><p>${escHtml(error.message)}</p><p style="font-size:12px;color:var(--muted);margin-top:8px">Assicurati che la tabella <code>emails</code> esista su Supabase.</p></div>`;
+    return;
+  }
+
+  emailState.emails = data || [];
+  _renderEmailList();
+}
+
+function _renderEmailList() {
+  const panel = document.getElementById('emailListPanel');
+  if (!panel) return;
+
+  if (!emailState.emails.length) {
+    panel.innerHTML = `<div class="empty" style="padding:48px 20px">
+      <div class="ei" style="font-size:44px">📭</div>
+      <h3>Nessuna email</h3>
+      <p style="font-size:13px">Clicca "Sincronizza" per caricare le email dal server IMAP</p>
+    </div>`;
+    return;
+  }
+
+  const unread = emailState.emails.filter(e => !e.read).length;
+  const cntEl = document.getElementById('ecount-INBOX');
+  if (cntEl) { cntEl.textContent = unread; cntEl.classList.toggle('hidden', !unread); }
+
+  panel.innerHTML = emailState.emails.map(e => {
+    const from = escHtml(e.from_name || e.from_email || '—');
+    const subj = escHtml(e.subject || '(Nessun oggetto)');
+    const preview = escHtml((e.text_body || '').replace(/\s+/g, ' ').trim().slice(0, 80));
+    const isActive = emailState.selectedId === e.id;
+    return `<div class="email-list-item${!e.read ? ' unread' : ''}${isActive ? ' active' : ''}"
+             onclick="openEmail('${e.id}')">
+      <div class="email-item-row1">
+        <div class="email-item-from">${from}</div>
+        <div class="email-item-date">${fmtEmailDate(e.date)}</div>
+      </div>
+      <div class="email-item-subject">${subj}</div>
+      <div class="email-item-preview">${preview || '&nbsp;'}</div>
+    </div>`;
+  }).join('');
+}
+
+async function openEmail(id) {
+  emailState.selectedId = id;
+  const found = emailState.emails.find(e => e.id === id);
+  if (!found) return;
+
+  // Optimistic read mark
+  if (!found.read) {
+    found.read = true;
+    db.from('emails').update({ read: true }).eq('id', id);
+  }
+  _renderEmailList();
+
+  const panel = document.getElementById('emailDetailPanel');
+  if (panel) panel.innerHTML = '<div class="loading-wrap" style="height:200px"><div class="spinner"></div></div>';
+
+  // Fetch full email (includes html_body)
+  const { data: full } = await db.from('emails').select('*').eq('id', id).single();
+  const email = full || found;
+
+  // Fetch thread
+  const threadId = email.thread_id || email.message_id;
+  const { data: thread } = await db
+    .from('emails')
+    .select('*')
+    .or(`thread_id.eq.${threadId},message_id.eq.${threadId}`)
+    .order('date', { ascending: true });
+
+  const messages = (thread && thread.length) ? thread : [email];
+
+  emailState.replyContext = {
+    to: email.from_email || email.from_name || '',
+    subject: email.subject || '',
+    messageId: email.message_id || '',
+    threadId: threadId || ''
+  };
+
+  _renderEmailDetail(messages);
+}
+
+function _renderEmailDetail(messages) {
+  const panel = document.getElementById('emailDetailPanel');
+  if (!panel) return;
+
+  const subj = messages[messages.length - 1]?.subject || '';
+  const rc = emailState.replyContext;
+  const replySubj = subj.startsWith('Re:') ? subj : 'Re: ' + subj;
+
+  const msgsHtml = messages.map(m => {
+    const fromName = m.from_name || m.from_email || m.from || '—';
+    const initChar = escHtml((fromName[0] || '?').toUpperCase());
+    const bodyContent = m.html_body
+      ? `<iframe srcdoc="${escHtml(m.html_body)}" class="email-html-frame" onload="this.style.height=(this.contentDocument.body.scrollHeight+20)+'px'"></iframe>`
+      : `<pre class="email-message-body">${escHtml(m.text_body || m.body || '(Corpo vuoto)')}</pre>`;
+    return `<div class="email-message">
+      <div class="email-message-header">
+        <div class="email-message-avatar">${initChar}</div>
+        <div style="min-width:0;flex:1">
+          <div class="email-message-from">${escHtml(fromName)}</div>
+          <div class="email-message-to">A: ${escHtml(m.to || '')}</div>
+        </div>
+        <div class="email-message-date">${fmtEmailDateFull(m.date)}</div>
+      </div>
+      <div class="email-message-content">${bodyContent}</div>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `
+    <div class="email-thread-header">
+      <div class="email-thread-subject">${escHtml(subj || '(Nessun oggetto)')}</div>
+      <div class="email-thread-meta">${messages.length} messaggio${messages.length !== 1 ? 'i nel thread' : ''}</div>
+    </div>
+    <div>${msgsHtml}</div>
+    <div class="email-reply-box">
+      <div class="email-reply-header">
+        ↩️ Rispondi a <strong>${escHtml(rc?.to || '')}</strong>
+        &nbsp;·&nbsp; Oggetto: <em>${escHtml(replySubj)}</em>
+      </div>
+      <textarea class="email-reply-textarea" id="replyBody" placeholder="Scrivi qui la tua risposta..."></textarea>
+      <div class="email-reply-footer">
+        <span class="email-reply-from">Da: ${escHtml(smtpSettings?.user_email || '')}</span>
+        <button class="btn btn-primary btn-sm" id="sendReplyBtn" onclick="sendReply()">✈️ Invia Risposta</button>
+      </div>
+    </div>`;
+}
+
+async function sendReply() {
+  const rc = emailState.replyContext;
+  if (!rc) { toast('Nessuna email selezionata', 'err'); return; }
+  const body = document.getElementById('replyBody')?.value?.trim();
+  if (!body) { toast('Scrivi il testo della risposta', 'err'); return; }
+
+  const btn = document.getElementById('sendReplyBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Invio...'; }
+
+  const replySubject = rc.subject.startsWith('Re:') ? rc.subject : 'Re: ' + rc.subject;
+  try {
+    const resp = await fetch(`${SUPABASE_URL}/functions/v1/smtp-send`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'apikey': SUPABASE_KEY },
+      body: JSON.stringify({ to: rc.to, subject: replySubject, body, inReplyTo: rc.messageId, threadId: rc.threadId })
+    });
+    const result = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(result.error || resp.statusText);
+    toast('Risposta inviata ✓', 'ok');
+    document.getElementById('replyBody').value = '';
+    if (emailState.selectedId) openEmail(emailState.selectedId);
+  } catch (e) {
+    toast('Errore invio: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '✈️ Invia Risposta'; }
+  }
+}
+
+async function syncEmails() {
+  const label = document.getElementById('syncLabel');
+  if (label) label.textContent = '⏳ Sincronizzando...';
+  await fetchEmails(true);
+  if (label) label.textContent = 'Sincronizza';
+}
+
+function emailSwitchFolder(folder) {
+  emailState.folder = folder;
+  emailState.selectedId = null;
+  emailState.replyContext = null;
+  document.querySelectorAll('.email-folder-item[id^="efolder-"]').forEach(el => el.classList.remove('active'));
+  const el = document.getElementById('efolder-' + folder);
+  if (el) el.classList.add('active');
+  fetchEmails();
+}
+
+function fmtEmailDate(d) {
+  if (!d) return '';
+  const date = new Date(d), today = new Date();
+  if (date.toDateString() === today.toDateString())
+    return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const yesterday = new Date(today); yesterday.setDate(today.getDate() - 1);
+  if (date.toDateString() === yesterday.toDateString()) return 'Ieri';
+  return date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+}
+
+function fmtEmailDateFull(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 // BOOT
