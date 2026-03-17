@@ -333,6 +333,43 @@ textarea { resize: vertical; min-height: 78px; }
 .email-reply-textarea::placeholder { color:var(--muted); }
 .email-reply-footer { padding:9px 14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg-elevated); gap:12px; }
 .email-reply-from { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+
+/* ── CAMPAIGNS WIZARD ── */
+.cw-container { max-width: 720px; margin: 0 auto; padding-bottom: 48px; }
+.cw-header-block { margin-bottom: 24px; }
+.cw-header-block h2 { font-size: 22px; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 5px; }
+.cw-header-block p { font-size: 13px; color: var(--text-sec); }
+.cw-q-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 22px 24px; margin-bottom: 14px; transition: border-color .15s; }
+.cw-q-card:focus-within { border-color: var(--border-md); }
+.cw-q-num { font-size: 10.5px; font-weight: 700; color: var(--primary-text); letter-spacing: 1.3px; text-transform: uppercase; margin-bottom: 6px; }
+.cw-q-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 3px; line-height: 1.35; }
+.cw-q-sub { font-size: 12px; color: var(--text-sec); margin-bottom: 16px; line-height: 1.55; }
+.cw-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.cw-opt { position: relative; }
+.cw-opt input[type=radio] { position: absolute; opacity: 0; width: 0; height: 0; }
+.cw-opt label { display: inline-block; padding: 7px 15px; border-radius: var(--radius-sm); border: 1px solid var(--border-md); color: var(--text-sec); font-size: 13px; font-weight: 500; cursor: pointer; transition: var(--transition); background: var(--bg-elevated); user-select: none; }
+.cw-opt label:hover { border-color: var(--border-lg); color: var(--text); background: var(--bg-hover); }
+.cw-opt input[type=radio]:checked + label { background: rgba(124,94,240,0.15); border-color: rgba(124,94,240,0.4); color: var(--primary-text); font-weight: 600; }
+.cw-select { width: 100%; padding: 9px 12px; background: var(--bg-elevated); border: 1px solid var(--border-md); border-radius: var(--radius-sm); color: var(--text); font-size: 13.5px; font-family: inherit; outline: none; cursor: pointer; transition: var(--transition); }
+.cw-select:focus { border-color: var(--primary); }
+.cw-select option { background: var(--bg-elevated); }
+.cw-textarea { width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border-md); border-radius: var(--radius-sm); color: var(--text); font-size: 13.5px; font-family: inherit; line-height: 1.6; outline: none; resize: vertical; transition: var(--transition); }
+.cw-textarea:focus { border-color: var(--primary); }
+.cw-textarea::placeholder { color: var(--muted); }
+.cw-char-hint { font-size: 11px; color: var(--muted); text-align: right; margin-top: 5px; }
+.cw-char-hint.warn { color: var(--warning); }
+.cw-footer { display: flex; justify-content: flex-end; margin-top: 8px; }
+.cw-blocked { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 440px; text-align: center; }
+.cw-blocked-icon { font-size: 60px; margin-bottom: 16px; }
+.cw-blocked-title { font-size: 20px; font-weight: 700; letter-spacing: -0.04em; margin-bottom: 8px; }
+.cw-blocked-sub { font-size: 13.5px; color: var(--text-sec); max-width: 480px; line-height: 1.6; margin-bottom: 28px; }
+.cw-blocked-cards { display: flex; gap: 14px; flex-wrap: wrap; justify-content: center; }
+.cw-blocked-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; width: 260px; text-align: left; }
+.cw-blocked-card .cbc-icon { font-size: 26px; margin-bottom: 10px; }
+.cw-blocked-card h4 { font-size: 13.5px; font-weight: 600; margin-bottom: 5px; color: var(--text); }
+.cw-blocked-card p { font-size: 12px; color: var(--text-sec); margin-bottom: 14px; line-height: 1.55; }
+.cw-blocked-card .cbc-status-ok { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--success); font-weight: 500; }
+.cw-blocked-card .cbc-status-ok::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success); display: inline-block; box-shadow: 0 0 6px var(--success); }
 </style>
 </head>
 <body>
@@ -390,6 +427,12 @@ textarea { resize: vertical; min-height: 78px; }
       </div>
       <div class="nav-item" data-view="email" onclick="navigate('email')">
         <span class="ni">📧</span><span>Email</span>
+      </div>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-title">Marketing</div>
+      <div class="nav-item" data-view="campaigns" onclick="navigate('campaigns')">
+        <span class="ni">📣</span><span>Campagne Email</span>
       </div>
     </div>
     <div class="nav-section">
@@ -703,7 +746,7 @@ function navigate(view) {
   currentView = view;
   document.querySelectorAll('.nav-item[data-view]').forEach(el =>
     el.classList.toggle('active', el.dataset.view === view));
-  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline', email:'Email', settings:'Impostazioni' };
+  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline', email:'Email', settings:'Impostazioni', campaigns:'Campagne Email' };
   document.getElementById('pageTitle').textContent = titles[view] || '';
   // Reset content layout for non-email views
   const content = document.getElementById('content');
@@ -718,7 +761,7 @@ function updateTopbar(view) {
   if (!el) return;
   if (view === 'email') {
     el.innerHTML = `<button class="btn btn-secondary" onclick="syncEmails()">🔄 Sincronizza Email</button>`;
-  } else if (view === 'settings') {
+  } else if (view === 'settings' || view === 'campaigns') {
     el.innerHTML = '';
   } else {
     el.innerHTML = `<button class="btn btn-secondary" onclick="openImport()">📤 Importa</button>
@@ -733,6 +776,7 @@ function renderView() {
   else if (currentView === 'pipeline') renderPipeline();
   else if (currentView === 'email') renderEmail();
   else if (currentView === 'settings') renderSettings();
+  else if (currentView === 'campaigns') renderCampaigns();
 }
 
 // ─────────────────────────────────────────────
@@ -1053,7 +1097,7 @@ function splitCSV(line) {
 
 function processRows(rows) {
   if(!rows.length){toast('Nessun dato trovato','err');return;}
-  importBatch = rows.map(row=>{const c={id:uid()};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
+  importBatch = rows.map(row=>{const c={id:uid(),user_id:currentUser.id};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
   const prev=document.getElementById('importPreview');
   prev.classList.remove('hidden');
   prev.innerHTML=`<strong>✅ ${importBatch.length} contatti pronti per l'importazione</strong>
@@ -1525,6 +1569,218 @@ function fmtEmailDate(d) {
 function fmtEmailDateFull(d) {
   if (!d) return '';
   return new Date(d).toLocaleString('it-IT', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+// ─────────────────────────────────────────────
+// CAMPAIGNS
+// ─────────────────────────────────────────────
+let campaignDraft = {};
+
+function renderCampaigns() {
+  const hasContacts = contacts.length > 0;
+  const hasEmail    = isEmailConfigured();
+  const content     = document.getElementById('content');
+
+  if (!hasContacts || !hasEmail) {
+    const cards = [];
+
+    if (!hasContacts) {
+      cards.push(`
+        <div class="cw-blocked-card">
+          <div class="cbc-icon">👥</div>
+          <h4>Importa i tuoi leads</h4>
+          <p>Per creare una campagna hai bisogno di almeno un contatto nel CRM con un ruolo assegnato.</p>
+          <button class="btn btn-primary btn-sm" onclick="openImport()">📤 Importa Leads</button>
+        </div>`);
+    } else {
+      cards.push(`
+        <div class="cw-blocked-card">
+          <div class="cbc-icon">👥</div>
+          <h4>Leads importati</h4>
+          <p>Hai ${contacts.length} contatto${contacts.length !== 1 ? 'i' : ''} nel CRM.</p>
+          <span class="cbc-status-ok">Tutto ok</span>
+        </div>`);
+    }
+
+    if (!hasEmail) {
+      cards.push(`
+        <div class="cw-blocked-card">
+          <div class="cbc-icon">📧</div>
+          <h4>Configura SMTP e IMAP</h4>
+          <p>Per inviare le email della campagna devi prima configurare il server di posta in uscita (SMTP) e in entrata (IMAP).</p>
+          <button class="btn btn-primary btn-sm" onclick="navigate('settings')">⚙️ Vai alle Impostazioni</button>
+        </div>`);
+    } else {
+      cards.push(`
+        <div class="cw-blocked-card">
+          <div class="cbc-icon">📧</div>
+          <h4>Email configurata</h4>
+          <p>SMTP e IMAP sono configurati e pronti all'uso.</p>
+          <span class="cbc-status-ok">Tutto ok</span>
+        </div>`);
+    }
+
+    content.innerHTML = `
+      <div class="cw-blocked">
+        <div class="cw-blocked-icon">🔒</div>
+        <div class="cw-blocked-title">Sezione non disponibile</div>
+        <div class="cw-blocked-sub">Per accedere alle campagne email devi prima completare i seguenti passaggi:</div>
+        <div class="cw-blocked-cards">${cards.join('')}</div>
+      </div>`;
+    return;
+  }
+
+  // Collect unique non-empty roles from contacts
+  const ruoli = [...new Set(contacts.map(c => c.ruolo).filter(r => r && r.trim()))].sort();
+
+  const ruoloOptions = ruoli.length
+    ? ruoli.map(r => `<option value="${escHtml(r)}" ${campaignDraft.target_ruolo === r ? 'selected' : ''}>${escHtml(r)}</option>`).join('')
+    : `<option value="">— nessun ruolo presente nei contatti —</option>`;
+
+  const d = campaignDraft;
+
+  function radioGroup(name, options) {
+    return options.map((opt, i) => `
+      <div class="cw-opt">
+        <input type="radio" name="${name}" id="${name}_${i}" value="${escHtml(opt)}" ${d[name] === opt ? 'checked' : ''} onchange="campaignDraft['${name}']=this.value">
+        <label for="${name}_${i}">${escHtml(opt)}</label>
+      </div>`).join('');
+  }
+
+  content.innerHTML = `
+    <div class="cw-container">
+      <div class="cw-header-block">
+        <h2>✉️ Nuova Campagna Email</h2>
+        <p>Rispondi a tutte le domande — l'AI utilizzerà queste informazioni per scrivere le email della campagna.</p>
+      </div>
+
+      <!-- Q1 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 1 di 8</div>
+        <div class="cw-q-title">Qual è l'obiettivo della tua campagna?</div>
+        <div class="cw-q-sub">Scegli un solo obiettivo</div>
+        <div class="cw-options">
+          ${radioGroup('obiettivo', ['Acquisire nuovi clienti', 'Fare recruiting', 'Contattare una lista di tuoi già clienti'])}
+        </div>
+      </div>
+
+      <!-- Q2 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 2 di 8</div>
+        <div class="cw-q-title">Quale target vuoi andare a colpire per questa campagna?</div>
+        <div class="cw-q-sub">Seleziona il ruolo dal tuo CRM — puoi scegliere una sola opzione</div>
+        <select class="cw-select" onchange="campaignDraft.target_ruolo=this.value" ${!ruoli.length ? 'disabled' : ''}>
+          <option value="">— Seleziona un ruolo —</option>
+          ${ruoloOptions}
+        </select>
+        ${!ruoli.length ? `<div style="margin-top:8px;font-size:12px;color:var(--warning)">⚠️ Nessun contatto ha un ruolo assegnato. <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openContactModal()">Aggiungi contatti con ruolo</span> oppure <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openImport()">importa un file</span>.</div>` : ''}
+      </div>
+
+      <!-- Q3 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 3 di 8</div>
+        <div class="cw-q-title">Seleziona il numero stimato dei dipendenti del tuo target ideale</div>
+        <div class="cw-q-sub">Anche se non sai quanti sono fai una stima, serve all'AI per scrivere meglio le email</div>
+        <div class="cw-options">
+          ${radioGroup('dipendenti', ['0–10', '11–50', '51–100', '101–250', '251–500', '500+'])}
+        </div>
+      </div>
+
+      <!-- Q4 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 4 di 8</div>
+        <div class="cw-q-title">Seleziona il fatturato annuo stimato del tuo target ideale</div>
+        <div class="cw-q-sub">Anche se non sai quanto fattura all'anno fai una stima, serve all'AI per scrivere meglio le email</div>
+        <div class="cw-options">
+          ${radioGroup('fatturato', ['< 250k', '251k–500k', '501k–1M', '1M–5M', '5M+'])}
+        </div>
+      </div>
+
+      <!-- Q5 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 5 di 8</div>
+        <div class="cw-q-title">Descrivi brevemente chi sei</div>
+        <div class="cw-q-sub">Scrivi in una frase una tua presentazione personale</div>
+        <textarea class="cw-textarea" rows="3" maxlength="280" id="cw_presentazione"
+          placeholder="Es: Sono Mario Rossi, consulente di marketing digitale con 10 anni di esperienza nel settore retail..."
+          oninput="campaignDraft.presentazione=this.value;updateCharCount('cw_presentazione','cw_char5',280)">${escHtml(d.presentazione||'')}</textarea>
+        <div class="cw-char-hint" id="cw_char5">${(d.presentazione||'').length}/280 caratteri</div>
+      </div>
+
+      <!-- Q6 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 6 di 8</div>
+        <div class="cw-q-title">Descrivi dettagliatamente il prodotto o servizio che vuoi andare a promuovere</div>
+        <div class="cw-q-sub">Scrivi un solo prodotto o servizio nel dettaglio, più sarai preciso e meglio l'AI scriverà le email.<br><strong style="color:var(--warning)">Attenzione: NON scrivere più di un prodotto</strong></div>
+        <textarea class="cw-textarea" rows="5" id="cw_prodotto"
+          placeholder="Descrivi nel dettaglio il tuo prodotto o servizio: cosa fa, come funziona, a chi è rivolto..."
+          oninput="campaignDraft.prodotto=this.value">${escHtml(d.prodotto||'')}</textarea>
+      </div>
+
+      <!-- Q7 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 7 di 8</div>
+        <div class="cw-q-title">Descrivi dettagliatamente il punto di forza del tuo prodotto o servizio</div>
+        <div class="cw-q-sub">Perché le persone dovrebbero scegliere proprio il tuo prodotto e non quello di qualcun altro?</div>
+        <textarea class="cw-textarea" rows="5" id="cw_forza"
+          placeholder="Es: A differenza dei competitor, il nostro servizio offre... Il risultato principale che ottengono i nostri clienti è..."
+          oninput="campaignDraft.forza=this.value">${escHtml(d.forza||'')}</textarea>
+      </div>
+
+      <!-- Q8 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 8 di 8</div>
+        <div class="cw-q-title">Descrivi dettagliatamente la garanzia che vuoi offrire sul tuo prodotto o servizio</div>
+        <div class="cw-q-sub">Con una garanzia chiara puoi convincere più facilmente le persone a fidarsi e acquistare da te, senza una garanzia rischi di non ricevere appuntamenti</div>
+        <textarea class="cw-textarea" rows="5" id="cw_garanzia"
+          placeholder="Es: Offriamo una garanzia soddisfatti o rimborsati entro 30 giorni. Se non ottieni risultati entro 60 giorni ti restituiamo..."
+          oninput="campaignDraft.garanzia=this.value">${escHtml(d.garanzia||'')}</textarea>
+      </div>
+
+      <div class="cw-footer">
+        <button class="btn btn-primary" onclick="validateCampaignForm()" style="padding:11px 28px;font-size:14px">
+          Continua →
+        </button>
+      </div>
+    </div>`;
+}
+
+function updateCharCount(textareaId, counterId, max) {
+  const ta = document.getElementById(textareaId);
+  const el = document.getElementById(counterId);
+  if (!ta || !el) return;
+  const len = ta.value.length;
+  el.textContent = `${len}/${max} caratteri`;
+  el.classList.toggle('warn', len > max * 0.9);
+}
+
+function validateCampaignForm() {
+  const d = campaignDraft;
+  const missing = [];
+  if (!d.obiettivo)     missing.push('Obiettivo della campagna (Dom. 1)');
+  if (!d.target_ruolo)  missing.push('Target / ruolo (Dom. 2)');
+  if (!d.dipendenti)    missing.push('Numero dipendenti (Dom. 3)');
+  if (!d.fatturato)     missing.push('Fatturato stimato (Dom. 4)');
+  if (!(d.presentazione||'').trim()) missing.push('Chi sei (Dom. 5)');
+  if (!(d.prodotto||'').trim())      missing.push('Prodotto / servizio (Dom. 6)');
+  if (!(d.forza||'').trim())         missing.push('Punto di forza (Dom. 7)');
+  if (!(d.garanzia||'').trim())      missing.push('Garanzia (Dom. 8)');
+
+  if (missing.length) {
+    toast('Compila tutti i campi obbligatori', 'err');
+    // Highlight: scroll to first missing card
+    const cards = document.querySelectorAll('.cw-q-card');
+    const missingNums = missing.map(m => parseInt(m.match(/Dom\. (\d)/)?.[1])).filter(Boolean);
+    if (missingNums.length && cards[missingNums[0]-1]) {
+      cards[missingNums[0]-1].scrollIntoView({ behavior: 'smooth', block: 'center' });
+      cards[missingNums[0]-1].style.borderColor = 'var(--danger)';
+      setTimeout(() => { if(cards[missingNums[0]-1]) cards[missingNums[0]-1].style.borderColor = ''; }, 2000);
+    }
+    return;
+  }
+
+  // All good — placeholder for next step
+  toast('Configurazione salvata! Prossimo step: generazione email ✓', 'ok');
 }
 
 // BOOT
