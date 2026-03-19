@@ -1208,15 +1208,47 @@ function renderContactsSpreadsheet() {
   const pageStartSp = list.length ? contactsPage * contactsPageSize + 1 : 0;
   const pageEndSp   = Math.min((contactsPage + 1) * contactsPageSize, list.length);
 
+  const filteredIds = list.map(c=>c.id);
+  const allFilteredSel = filteredIds.length > 0 && filteredIds.every(id => selectedContacts.has(id));
   const bulkBar = selectedContacts.size > 0 ? `
     <div class="bulk-bar">
-      <span>${selectedContacts.size} contatt${selectedContacts.size===1?'o':'i'} selezionat${selectedContacts.size===1?'o':'i'}</span>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>${selectedContacts.size} contatt${selectedContacts.size===1?'o':'i'} selezionat${selectedContacts.size===1?'o':'i'}</span>
+        ${!allFilteredSel ? `<button class="btn btn-secondary btn-sm" onclick="spSelectAllFiltered()" style="font-size:12px">Seleziona tutti i ${list.length} contatti</button>` : ''}
+        <button class="btn btn-secondary btn-sm" onclick="selectedContacts.clear();renderContacts()" style="font-size:12px">Deseleziona tutti</button>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-        <select class="filter-select btn-sm" id="bulkFieldSel" style="font-size:12px">
+        <select class="filter-select btn-sm" id="bulkFieldSel" onchange="bulkFieldChanged()" style="font-size:12px">
           <option value="">Cambia campo...</option>
-          ${STAGES.map(s=>`<option value="stage:${s}">Stage → ${s}</option>`).join('')}
-          ${PRIORITIES.map(p=>`<option value="priorita:${p}">Priorità → ${p}</option>`).join('')}
+          <optgroup label="Dati Personali">
+            <option value="nome">Nome</option>
+            <option value="cognome">Cognome</option>
+            <option value="azienda">Azienda</option>
+            <option value="ruolo">Ruolo</option>
+            <option value="email">Email</option>
+            <option value="telefono">Telefono</option>
+            <option value="linkedin">LinkedIn</option>
+            <option value="sito">Sito Web</option>
+          </optgroup>
+          <optgroup label="Stage &amp; Azioni">
+            <option value="stage">Stage</option>
+            <option value="priorita">Priorità</option>
+            <option value="prossima_azione">Prossima Azione</option>
+            <option value="data_azione">Data Azione</option>
+          </optgroup>
+          <optgroup label="Valori Economici">
+            <option value="valore_offerta">Offerta €</option>
+            <option value="valore_rinnovo">Rinnovo €</option>
+            <option value="durata_mesi">Durata (mesi)</option>
+            <option value="ltv">LTV €</option>
+            <option value="data_chiusura">Data Chiusura</option>
+            <option value="data_rinnovo">Data Rinnovo</option>
+          </optgroup>
+          <optgroup label="Note">
+            <option value="note">Note</option>
+          </optgroup>
         </select>
+        <span id="bulkValCont"></span>
         <button class="btn btn-secondary btn-sm" onclick="bulkChangeField()" style="font-size:12px">✏️ Applica a selezionati</button>
         <button class="btn btn-sm" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.25);font-size:12px" onclick="bulkDelete()">🗑️ Elimina selezionati</button>
       </div>
@@ -1297,13 +1329,39 @@ async function bulkDelete() {
   toast(`${ids.length} contatti eliminati`, 'ok');
 }
 
+function bulkFieldChanged() {
+  const sel = document.getElementById('bulkFieldSel');
+  const cont = document.getElementById('bulkValCont');
+  if (!sel || !cont) return;
+  const field = sel.value;
+  if (!field) { cont.innerHTML = ''; return; }
+  const SELECT_OPTS = { stage: STAGES, priorita: PRIORITIES, prossima_azione: NEXT_ACTIONS };
+  const DATE_FIELDS = ['data_azione','data_chiusura','data_rinnovo'];
+  const NUMBER_FIELDS = ['valore_offerta','valore_rinnovo','durata_mesi','ltv'];
+  if (SELECT_OPTS[field]) {
+    const opts = `<option value=""></option>` + SELECT_OPTS[field].map(o=>`<option value="${o}">${o}</option>`).join('');
+    cont.innerHTML = `<select class="filter-select btn-sm" id="bulkValInput" style="font-size:12px">${opts}</select>`;
+  } else if (DATE_FIELDS.includes(field)) {
+    cont.innerHTML = `<input type="date" class="filter-select btn-sm" id="bulkValInput" style="font-size:12px">`;
+  } else if (NUMBER_FIELDS.includes(field)) {
+    cont.innerHTML = `<input type="number" class="filter-input btn-sm" id="bulkValInput" placeholder="Valore..." style="font-size:12px;width:140px;padding:4px 8px">`;
+  } else {
+    cont.innerHTML = `<input type="text" class="filter-input btn-sm" id="bulkValInput" placeholder="Valore..." style="font-size:12px;width:200px;padding:4px 8px">`;
+  }
+}
+
+function spSelectAllFiltered() {
+  getFiltered().forEach(c => selectedContacts.add(c.id));
+  renderContacts();
+}
+
 async function bulkChangeField() {
   const sel = document.getElementById('bulkFieldSel');
   if (!sel || !sel.value) { toast('Seleziona un campo da modificare', 'err'); return; }
-  const colonIdx = sel.value.indexOf(':');
-  const field = sel.value.slice(0, colonIdx);
-  const value = sel.value.slice(colonIdx + 1);
-  if (!field || !value) return;
+  const field = sel.value;
+  const valEl = document.getElementById('bulkValInput');
+  if (!valEl) { toast('Inserisci un valore per il campo selezionato', 'err'); return; }
+  const value = valEl.value || null;
   const ids = [...selectedContacts];
   const { error } = await db.from('contacts').update({[field]: value}).in('id', ids);
   if (error) { toast('Errore: '+error.message, 'err'); return; }
@@ -2552,7 +2610,7 @@ function renderCampaignDashboard() {
           <div class="cd-title">📊 Campagna Email</div>
           <div style="font-size:13px;color:var(--text-sec);margin-top:3px">${escHtml(s.draft?.obiettivo||'')} · Target: <strong>${escHtml(s.draft?.target_ruolo||'')}</strong></div>
         </div>
-        <button class="btn btn-primary" onclick="startNewCampaign()" ${s.running ? 'disabled title="Campagna in corso — attendi il completamento"' : ''} style="${s.running ? 'opacity:0.4;cursor:not-allowed;' : ''}">＋ Nuova Campagna</button>
+        <button id="cdNewCampaignBtn" class="btn btn-primary" onclick="startNewCampaign()" ${s.running ? 'disabled title="Campagna in corso — attendi il completamento"' : ''} style="${s.running ? 'opacity:0.4;cursor:not-allowed;' : ''}">＋ Nuova Campagna</button>
       </div>
 
       <div class="cd-card">
@@ -2619,6 +2677,12 @@ function updateCampaignDashboard() {
   if (badge) {
     badge.className = `cd-status-badge ${s.running ? 'cd-status-running' : 'cd-status-done'}`;
     if (el('cdStatusLabel')) el('cdStatusLabel').textContent = s.running ? 'In corso' : 'Completata';
+  }
+  const btn = el('cdNewCampaignBtn');
+  if (btn) {
+    btn.disabled = s.running;
+    btn.style.opacity = s.running ? '0.4' : '';
+    btn.style.cursor  = s.running ? 'not-allowed' : '';
   }
 }
 

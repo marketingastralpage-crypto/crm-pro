@@ -31,9 +31,10 @@ serve(async (req: Request) => {
     if (!bodyPrompt)    throw new Error("bodyPrompt obbligatorio");
     if (!subjectPrompt) throw new Error("subjectPrompt obbligatorio");
 
-    // Strip <think>...</think> blocks produced by reasoning models (e.g. qwen3)
+    // Strip <think>...</think> blocks produced by reasoning models (e.g. qwen3).
+    // Also handles unclosed <think> blocks (truncated by max_tokens).
     const stripThinking = (text: string) =>
-      text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<think>[\s\S]*/gi, "").trim();
 
     const callGroq = (systemPrompt: string, userPrompt: string, maxTokens: number) =>
       fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -53,8 +54,8 @@ serve(async (req: Request) => {
         } as Record<string, unknown>),
       });
 
-    const emailSystem = "Sei un esperto copywriter italiano madrelingua. Rispondi SOLO con il testo richiesto, senza commenti, intestazioni o spiegazioni. Usa italiano corretto e naturale.";
-    const subjectSystem = "Sei un esperto di email marketing B2B. Rispondi SOLO con l'oggetto richiesto, niente altro.";
+    const emailSystem = "/nothink\nSei un esperto copywriter italiano madrelingua. Rispondi SOLO con il testo richiesto, senza commenti, intestazioni o spiegazioni. Usa italiano corretto e naturale.";
+    const subjectSystem = "/nothink\nSei un esperto di email marketing B2B. Rispondi SOLO con l'oggetto richiesto, niente altro.";
 
     const [emailRes, subjectRes] = await Promise.all([
       callGroq(emailSystem, bodyPrompt, 900),
