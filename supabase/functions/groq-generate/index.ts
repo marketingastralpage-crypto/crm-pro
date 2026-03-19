@@ -65,8 +65,9 @@ serve(async (req: Request) => {
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("[groq-generate]", msg);
+    // Return 200 so the Supabase client passes the body through (non-2xx swallows the message)
     return new Response(JSON.stringify({ error: msg }), {
-      status: 500,
+      status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
