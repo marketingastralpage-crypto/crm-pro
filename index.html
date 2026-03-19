@@ -1996,9 +1996,11 @@ async function openEmail(id) {
   // Optimistic read mark
   if (!found.read) {
     found.read = true;
-    db.from('emails').update({ read: true }).eq('id', id);
+    _renderEmailList();
+    await db.from('emails').update({ read: true }).eq('id', id);
+  } else {
+    _renderEmailList();
   }
-  _renderEmailList();
 
   const panel = document.getElementById('emailDetailPanel');
   if (panel) panel.innerHTML = '<div class="loading-wrap" style="height:200px"><div class="spinner"></div></div>';

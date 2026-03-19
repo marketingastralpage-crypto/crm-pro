@@ -123,21 +123,21 @@ serve(async (req: Request) => {
 
     let upserted = 0;
     if (emails.length > 0) {
-      // Preserve local read status: don't overwrite emails already marked as read in DB
-      const messageIds = emails.map(e => e.message_id);
-      const { data: alreadyRead } = await supa
-        .from("emails")
-        .select("message_id")
-        .in("message_id", messageIds)
-        .eq("read", true);
-      const readSet = new Set((alreadyRead || []).map((r: { message_id: string }) => r.message_id));
-      const emailsToUpsert = emails.map(e => readSet.has(e.message_id) ? { ...e, read: true } : e);
+      // Upsert email content WITHOUT the read column so we never overwrite
+      // a locally-marked-read email back to false. New rows get read=false by default.
+      const emailsToUpsert = emails.map(({ read: _read, ...rest }) => rest);
 
       const { error: upsertErr } = await supa
         .from("emails")
         .upsert(emailsToUpsert, { onConflict: "message_id", ignoreDuplicates: false });
       if (upsertErr) throw new Error("Errore salvataggio email: " + upsertErr.message);
       upserted = emails.length;
+
+      // If IMAP reports \\Seen, propagate that to the DB (false→true only, never true→false)
+      const seenIds = emails.filter(e => e.read).map(e => e.message_id);
+      if (seenIds.length > 0) {
+        await supa.from("emails").update({ read: true }).in("message_id", seenIds);
+      }
     }
 
     return new Response(JSON.stringify({ ok: true, count: upserted }), {

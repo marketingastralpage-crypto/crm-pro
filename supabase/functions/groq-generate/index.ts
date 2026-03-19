@@ -55,7 +55,7 @@ serve(async (req: Request) => {
       });
 
     const emailSystem = "/nothink\nSei un esperto copywriter italiano madrelingua. Rispondi SOLO con il testo richiesto, senza commenti, intestazioni o spiegazioni. Usa italiano corretto e naturale.";
-    const subjectSystem = "/nothink\nSei un esperto di email marketing B2B. Rispondi SOLO con l'oggetto richiesto, niente altro.";
+    const subjectSystem = "/nothink\nSei un esperto di email marketing B2B. Rispondi ESCLUSIVAMENTE con il testo dell'oggetto email, senza nessuna introduzione, spiegazione, punteggiatura iniziale o finale, virgolette, asterischi o frasi come 'Ecco l'oggetto' o simili. Solo il testo puro dell'oggetto.";
 
     const [emailRes, subjectRes] = await Promise.all([
       callGroq(emailSystem, bodyPrompt, 900),
@@ -68,7 +68,12 @@ serve(async (req: Request) => {
     if (!emailRes.ok) throw new Error(emailData.error?.message || "Errore Groq API");
 
     const body    = stripThinking(emailData.choices[0].message.content);
-    const subject = stripThinking((subjectData.choices?.[0]?.message?.content || "")).replace(/^["']|["']$/g, "");
+    const rawSubject = stripThinking(subjectData.choices?.[0]?.message?.content || "");
+    // Strip AI preamble like "Grazie per il chiarimento, ecco l'oggetto richiesto: ..."
+    const subject = rawSubject
+      .replace(/^[^:]+(?:ecco|oggetto|richiesto|risposta|chiarimento|certamente|certo|perfetto)[^:]*:\s*/i, "")
+      .replace(/^[*_"'`\s]+|[*_"'`\s]+$/g, "")
+      .trim();
 
     return new Response(JSON.stringify({ body, subject }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
