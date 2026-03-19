@@ -234,6 +234,8 @@ textarea { resize: vertical; min-height: 78px; }
 .sp-select:hover { border-color: var(--border-md); background: var(--bg-elevated); }
 .sp-select:focus { border-color: var(--primary); background: var(--bg-hover); }
 .sp-select option { background: var(--bg-elevated); }
+.pagination-bar { display: flex; align-items: center; gap: 8px; justify-content: center; padding: 12px 0 4px; flex-wrap: wrap; }
+.pagination-bar button:disabled { opacity: 0.35; cursor: default; }
 .bulk-bar { background: rgba(124,94,240,0.1); border: 1px solid rgba(124,94,240,0.28); border-radius: var(--radius-md); padding: 10px 16px; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
 .bulk-bar > span { font-size: 13px; font-weight: 600; color: var(--primary-text); }
 .view-toggle { display: flex; gap: 4px; margin-left: auto; }
@@ -701,6 +703,8 @@ let sortField = 'cognome', sortDir = 'asc';
 let fText = '', fStage = '', fPrio = '';
 let contactsViewMode = 'list';
 let selectedContacts = new Set();
+let contactsPage = 0;
+let contactsPageSize = 100;
 
 // ─────────────────────────────────────────────
 // AUTH
@@ -945,10 +949,13 @@ function renderDashboard() {
 function renderContacts() {
   if (contactsViewMode === 'spreadsheet') { renderContactsSpreadsheet(); return; }
   const list = getFiltered();
+  const totalPages = Math.max(1, Math.ceil(list.length / contactsPageSize));
+  if (contactsPage >= totalPages) contactsPage = totalPages - 1;
+  const pageList = list.slice(contactsPage * contactsPageSize, (contactsPage + 1) * contactsPageSize);
   const today = new Date(); today.setHours(0,0,0,0);
   const in3 = new Date(today); in3.setDate(in3.getDate()+3);
 
-  const rows = list.length ? list.map(c => {
+  const rows = pageList.length ? pageList.map(c => {
     let dateHtml = '';
     if (c.data_azione) {
       const d = new Date(c.data_azione);
@@ -981,19 +988,25 @@ function renderContacts() {
     <div class="ei">👥</div><h3>Nessun contatto trovato</h3><p>Aggiungi il tuo primo contatto</p>
   </div></td></tr>`;
 
+  const pageSizeOpts = [100,200,500,1000].map(n=>`<option value="${n}"${contactsPageSize===n?' selected':''}>${n}</option>`).join('');
+  const pageStart = list.length ? contactsPage * contactsPageSize + 1 : 0;
+  const pageEnd   = Math.min((contactsPage + 1) * contactsPageSize, list.length);
   document.getElementById('content').innerHTML = `
     <div class="filter-bar">
       <input type="text" class="filter-input" placeholder="🔍 Cerca per nome, azienda, email..." value="${fText}"
-        oninput="fText=this.value;renderContacts()">
-      <select class="filter-select" onchange="fStage=this.value;renderContacts()">
+        oninput="fText=this.value;contactsPage=0;renderContacts()">
+      <select class="filter-select" onchange="fStage=this.value;contactsPage=0;renderContacts()">
         <option value="">Tutti gli stage</option>
         ${STAGES.map(s=>`<option value="${s}"${fStage===s?' selected':''}>${s}</option>`).join('')}
       </select>
-      <select class="filter-select" onchange="fPrio=this.value;renderContacts()">
+      <select class="filter-select" onchange="fPrio=this.value;contactsPage=0;renderContacts()">
         <option value="">Tutte le priorità</option>
         ${PRIORITIES.map(p=>`<option value="${p}"${fPrio===p?' selected':''}>${p}</option>`).join('')}
       </select>
-      <span style="font-size:12.5px;color:var(--muted);white-space:nowrap">${list.length} contatti</span>
+      <select class="filter-select" onchange="contactsPageSize=+this.value;contactsPage=0;renderContacts()" title="Righe per pagina">
+        ${pageSizeOpts}
+      </select>
+      <span style="font-size:12.5px;color:var(--muted);white-space:nowrap">${pageStart}–${pageEnd} di ${list.length}</span>
       <div class="view-toggle">
         <button class="view-btn active" onclick="contactsViewMode='list';renderContacts()">☰ Lista</button>
         <button class="view-btn" onclick="contactsViewMode='spreadsheet';selectedContacts=new Set();renderContacts()">⊞ Tabella</button>
@@ -1012,7 +1025,14 @@ function renderContacts() {
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`;
+    </div>
+    ${totalPages > 1 ? `<div class="pagination-bar">
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage=0;renderContacts()" ${contactsPage===0?'disabled':''}>«</button>
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage--;renderContacts()" ${contactsPage===0?'disabled':''}>‹ Prec</button>
+      <span style="font-size:13px;color:var(--text-sec)">Pag. ${contactsPage+1} / ${totalPages}</span>
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage++;renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>Succ ›</button>
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage=${totalPages-1};renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>»</button>
+    </div>` : ''}`;
 }
 
 function getFiltered() {
@@ -1034,6 +1054,7 @@ function getFiltered() {
 
 function doSort(f) {
   sortField===f ? sortDir=(sortDir==='asc'?'desc':'asc') : (sortField=f, sortDir='asc');
+  contactsPage = 0;
   renderContacts();
 }
 function si(f) { return sortField!==f?'↕':sortDir==='asc'?'↑':'↓'; }
@@ -1059,7 +1080,10 @@ const SP_COLS = [
 
 function renderContactsSpreadsheet() {
   const list = getFiltered();
-  const selAll = list.length > 0 && list.every(c => selectedContacts.has(c.id));
+  const totalPages = Math.max(1, Math.ceil(list.length / contactsPageSize));
+  if (contactsPage >= totalPages) contactsPage = totalPages - 1;
+  const pageList = list.slice(contactsPage * contactsPageSize, (contactsPage + 1) * contactsPageSize);
+  const selAll = pageList.length > 0 && pageList.every(c => selectedContacts.has(c.id));
 
   const colDefs = SP_COLS.map(c => ({
     ...c,
@@ -1068,7 +1092,7 @@ function renderContactsSpreadsheet() {
 
   const headerCells = colDefs.map(c=>`<th>${c.label}</th>`).join('');
 
-  const rows = list.length ? list.map(c => {
+  const rows = pageList.length ? pageList.map(c => {
     const sel = selectedContacts.has(c.id);
     const cells = colDefs.map(col => {
       const val = c[col.key] != null ? String(c[col.key]) : '';
@@ -1085,6 +1109,9 @@ function renderContactsSpreadsheet() {
       <td><div class="action-btns"><button class="btn-icon btn-edit" onclick="openContactModal('${c.id}')" title="Modifica">✏️</button><button class="btn-icon btn-del" onclick="deleteContact('${c.id}')" title="Elimina">🗑️</button></div></td>
     </tr>`;
   }).join('') : `<tr><td colspan="${colDefs.length+2}"><div class="empty"><div class="ei">👥</div><h3>Nessun contatto trovato</h3></div></td></tr>`;
+  const pageSizeOptsSp = [100,200,500,1000].map(n=>`<option value="${n}"${contactsPageSize===n?' selected':''}>${n}</option>`).join('');
+  const pageStartSp = list.length ? contactsPage * contactsPageSize + 1 : 0;
+  const pageEndSp   = Math.min((contactsPage + 1) * contactsPageSize, list.length);
 
   const bulkBar = selectedContacts.size > 0 ? `
     <div class="bulk-bar">
@@ -1103,16 +1130,19 @@ function renderContactsSpreadsheet() {
   document.getElementById('content').innerHTML = `
     <div class="filter-bar">
       <input type="text" class="filter-input" placeholder="🔍 Cerca per nome, azienda, email..." value="${fText}"
-        oninput="fText=this.value;renderContacts()">
-      <select class="filter-select" onchange="fStage=this.value;renderContacts()">
+        oninput="fText=this.value;contactsPage=0;renderContacts()">
+      <select class="filter-select" onchange="fStage=this.value;contactsPage=0;renderContacts()">
         <option value="">Tutti gli stage</option>
         ${STAGES.map(s=>`<option value="${s}"${fStage===s?' selected':''}>${s}</option>`).join('')}
       </select>
-      <select class="filter-select" onchange="fPrio=this.value;renderContacts()">
+      <select class="filter-select" onchange="fPrio=this.value;contactsPage=0;renderContacts()">
         <option value="">Tutte le priorità</option>
         ${PRIORITIES.map(p=>`<option value="${p}"${fPrio===p?' selected':''}>${p}</option>`).join('')}
       </select>
-      <span style="font-size:12.5px;color:var(--muted);white-space:nowrap">${list.length} contatti</span>
+      <select class="filter-select" onchange="contactsPageSize=+this.value;contactsPage=0;renderContacts()" title="Righe per pagina">
+        ${pageSizeOptsSp}
+      </select>
+      <span style="font-size:12.5px;color:var(--muted);white-space:nowrap">${pageStartSp}–${pageEndSp} di ${list.length}</span>
       <div class="view-toggle">
         <button class="view-btn" onclick="contactsViewMode='list';selectedContacts=new Set();renderContacts()">☰ Lista</button>
         <button class="view-btn active" onclick="void 0">⊞ Tabella</button>
@@ -1123,13 +1153,20 @@ function renderContactsSpreadsheet() {
       <table class="spreadsheet-table">
         <thead><tr>
           <th style="width:36px"><input type="checkbox" ${selAll?'checked':''} title="Seleziona tutti"
-            onchange="spToggleAll(this.checked,[${list.map(c=>`'${c.id}'`).join(',')}])"></th>
+            onchange="spToggleAll(this.checked,[${pageList.map(c=>`'${c.id}'`).join(',')}])"></th>
           ${headerCells}
           <th>Azioni</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
-    </div>`;
+    </div>
+    ${totalPages > 1 ? `<div class="pagination-bar">
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage=0;renderContacts()" ${contactsPage===0?'disabled':''}>«</button>
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage--;renderContacts()" ${contactsPage===0?'disabled':''}>‹ Prec</button>
+      <span style="font-size:13px;color:var(--text-sec)">Pag. ${contactsPage+1} / ${totalPages}</span>
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage++;renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>Succ ›</button>
+      <button class="btn btn-secondary btn-sm" onclick="contactsPage=${totalPages-1};renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>»</button>
+    </div>` : ''}`;
 }
 
 async function spChange(el) {
@@ -1852,8 +1889,7 @@ let campaignState = {
   targetContacts: [], sent: 0, total: 0, running: false, startedAt: null, failed: 0
 };
 
-const GROQ_API_KEY = ''; // Set your Groq API key here (do NOT commit secrets)
-const GROQ_MODEL   = 'qwen/qwen3-32b';
+// Groq is called server-side via the groq-generate edge function (see supabase/functions/groq-generate)
 
 function renderCampaigns() {
   // If a campaign was already launched, show dashboard
@@ -2112,26 +2148,15 @@ REGOLE TASSATIVE:
 
     const subjectPrompt = `Scrivi SOLO l'oggetto di una cold email (max 8 parole, in italiano, senza virgolette) con obiettivo: ${d.obiettivo}, rivolta a: ${d.target_ruolo}. L'oggetto deve sembrare personale e curioso, non pubblicitario.`;
 
-    const [emailRes, subjectRes] = await Promise.all([
-      fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-        body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: bodyPrompt }], temperature: 0.7, max_tokens: 900 })
-      }),
-      fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_API_KEY}` },
-        body: JSON.stringify({ model: GROQ_MODEL, messages: [{ role: 'user', content: subjectPrompt }], temperature: 0.7, max_tokens: 60 })
-      })
-    ]);
+    const { data: groqData, error: groqErr } = await db.functions.invoke('groq-generate', {
+      body: { bodyPrompt, subjectPrompt }
+    });
 
-    const emailData   = await emailRes.json();
-    const subjectData = await subjectRes.json();
+    if (groqErr) throw new Error(groqErr.message || 'Errore edge function groq-generate');
+    if (groqData?.error) throw new Error(groqData.error);
 
-    if (!emailRes.ok) throw new Error(emailData.error?.message || 'Errore Groq API');
-
-    campaignDraft.generatedEmail   = emailData.choices[0].message.content.trim();
-    campaignDraft.generatedSubject = (subjectData.choices?.[0]?.message?.content || `Opportunità per ${d.target_ruolo}`).trim().replace(/^["']|["']$/g, '');
+    campaignDraft.generatedEmail   = groqData.body;
+    campaignDraft.generatedSubject = groqData.subject || `Opportunità per ${d.target_ruolo}`;
 
     renderCampaignEditor();
   } catch (e) {
