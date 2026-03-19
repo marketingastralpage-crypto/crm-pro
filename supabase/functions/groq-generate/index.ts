@@ -31,7 +31,11 @@ serve(async (req: Request) => {
     if (!bodyPrompt)    throw new Error("bodyPrompt obbligatorio");
     if (!subjectPrompt) throw new Error("subjectPrompt obbligatorio");
 
-    const callGroq = (prompt: string, maxTokens: number) =>
+    // Strip <think>...</think> blocks produced by reasoning models (e.g. qwen3)
+    const stripThinking = (text: string) =>
+      text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+
+    const callGroq = (systemPrompt: string, userPrompt: string, maxTokens: number) =>
       fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -40,15 +44,21 @@ serve(async (req: Request) => {
         },
         body: JSON.stringify({
           model: GROQ_MODEL,
-          messages: [{ role: "user", content: prompt }],
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: userPrompt },
+          ],
           temperature: 0.7,
           max_tokens: maxTokens,
-        }),
+        } as Record<string, unknown>),
       });
 
+    const emailSystem = "Sei un esperto copywriter italiano madrelingua. Rispondi SOLO con il testo richiesto, senza commenti, intestazioni o spiegazioni. Usa italiano corretto e naturale.";
+    const subjectSystem = "Sei un esperto di email marketing B2B. Rispondi SOLO con l'oggetto richiesto, niente altro.";
+
     const [emailRes, subjectRes] = await Promise.all([
-      callGroq(bodyPrompt, 900),
-      callGroq(subjectPrompt, 60),
+      callGroq(emailSystem, bodyPrompt, 900),
+      callGroq(subjectSystem, subjectPrompt, 60),
     ]);
 
     const emailData   = await emailRes.json();
@@ -56,8 +66,8 @@ serve(async (req: Request) => {
 
     if (!emailRes.ok) throw new Error(emailData.error?.message || "Errore Groq API");
 
-    const body    = emailData.choices[0].message.content.trim();
-    const subject = (subjectData.choices?.[0]?.message?.content || "").trim().replace(/^["']|["']$/g, "");
+    const body    = stripThinking(emailData.choices[0].message.content);
+    const subject = stripThinking((subjectData.choices?.[0]?.message?.content || "")).replace(/^["']|["']$/g, "");
 
     return new Response(JSON.stringify({ body, subject }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

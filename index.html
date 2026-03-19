@@ -173,17 +173,27 @@ select option { background: var(--bg-elevated); }
 textarea { resize: vertical; min-height: 78px; }
 
 /* ── PIPELINE ── */
-.pipeline-wrap { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 12px; }
-.pipe-col { min-width: 210px; max-width: 210px; background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; }
-.pipe-header { padding: 12px 14px; font-weight: 600; font-size: 12px; display: flex; align-items: center; justify-content: space-between; background: var(--bg-elevated); border-bottom: 1px solid var(--border); color: var(--text); }
-.pipe-count { border-radius: 20px; padding: 2px 8px; font-size: 10.5px; background: var(--bg-hover); color: var(--text-sec); }
-.pipe-total { padding: 4px 14px; font-size: 11px; font-weight: 600; color: var(--success); background: rgba(34,197,94,0.08); border-bottom: 1px solid var(--border); }
-.pipe-cards { padding: 8px; min-height: 80px; }
-.pipe-card { background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 10px 12px; margin-bottom: 7px; border: 1px solid var(--border); cursor: pointer; transition: var(--transition); }
-.pipe-card:hover { border-color: var(--primary); background: rgba(124,94,240,0.06); }
-.pipe-card-name { font-weight: 600; font-size: 12.5px; margin-bottom: 2px; color: var(--text); }
-.pipe-card-co { font-size: 11.5px; color: var(--text-sec); }
-.pipe-card-val { font-size: 11.5px; color: var(--success); font-weight: 600; margin-top: 5px; }
+.pipeline-board { display: flex; flex-direction: column; height: 100%; gap: 12px; }
+.pipeline-summary { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; flex-shrink: 0; }
+.ps-card { background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 12px 16px; }
+.ps-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 4px; }
+.ps-value { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.03em; }
+.ps-value.money { color: var(--success); }
+.pipeline-wrap { display: grid; grid-template-columns: repeat(8, minmax(140px, 1fr)); gap: 10px; flex: 1; min-height: 0; overflow-x: auto; padding-bottom: 4px; }
+.pipe-col { background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; min-height: 0; transition: border-color .15s, box-shadow .15s, background .15s; }
+.pipe-col.drag-over { border-color: var(--primary) !important; background: rgba(124,94,240,0.06); box-shadow: 0 0 0 2px var(--primary-glow); }
+.pipe-header { padding: 10px 12px; font-weight: 600; font-size: 11.5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.pipe-count { border-radius: 20px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
+.pipe-total { padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--success); background: rgba(34,197,94,0.07); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.pipe-cards { padding: 7px; flex: 1; overflow-y: auto; min-height: 60px; }
+.pipe-card { background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 6px; border: 1px solid var(--border); cursor: grab; transition: var(--transition); user-select: none; position: relative; }
+.pipe-card:hover { border-color: var(--primary); background: rgba(124,94,240,0.07); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+.pipe-card.dragging { opacity: 0.35; cursor: grabbing; transform: scale(0.96); }
+.pipe-card-name { font-weight: 600; font-size: 12px; margin-bottom: 1px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pipe-card-co { font-size: 11px; color: var(--text-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pipe-card-val { font-size: 11px; color: var(--success); font-weight: 600; margin-top: 4px; }
+.pipe-card-action { font-size: 10.5px; color: var(--primary-text); margin-top: 3px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pipe-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 18px 8px; border: 1px dashed rgba(255,255,255,0.07); border-radius: var(--radius-sm); margin: 4px 0; }
 
 /* ── IMPORT ── */
 .guide-box { background: rgba(124,94,240,0.06); border: 1px solid rgba(124,94,240,0.2); border-radius: var(--radius-md); padding: 18px; margin-bottom: 16px; }
@@ -699,6 +709,7 @@ let currentUser = null;
 let currentView = 'dashboard';
 let editingId = null;
 let importBatch = null;
+let dashDays = 7;
 let sortField = 'cognome', sortDir = 'asc';
 let fText = '', fStage = '', fPrio = '';
 let contactsViewMode = 'list';
@@ -836,10 +847,12 @@ function navigate(view) {
     el.classList.toggle('active', el.dataset.view === view));
   const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline', email:'Email', settings:'Impostazioni', campaigns:'Campagne Email' };
   document.getElementById('pageTitle').textContent = titles[view] || '';
-  // Reset content layout for non-email views
+  // Reset content layout for non-email/pipeline views
   const content = document.getElementById('content');
   content.style.padding = '';
   content.style.overflow = '';
+  content.style.display = '';
+  content.style.flexDirection = '';
   updateTopbar(view);
   renderView();
 }
@@ -875,69 +888,151 @@ function renderDashboard() {
   const totalOff = contacts.reduce((s,c) => s+(parseFloat(c.valore_offerta)||0), 0);
   const totalLTV = contacts.reduce((s,c) => s+(parseFloat(c.ltv)||0), 0);
   const nClienti = contacts.filter(c => c.stage==='Cliente').length;
-  const nScadute = contacts.filter(c => c.data_azione && new Date(c.data_azione)<today).length;
 
-  const in7 = new Date(today); in7.setDate(in7.getDate()+7);
+  // Overdue actions
+  const scadute = contacts
+    .filter(c => c.data_azione && new Date(c.data_azione) < today)
+    .sort((a,b) => new Date(b.data_azione)-new Date(a.data_azione));
+
+  // Upcoming actions based on selected range
+  const inN = new Date(today);
+  if (dashDays > 0) inN.setDate(inN.getDate() + dashDays);
   const upcoming = contacts
-    .filter(c => { if(!c.data_azione) return false; const d=new Date(c.data_azione); return d>=today && d<=in7; })
-    .sort((a,b) => new Date(a.data_azione)-new Date(b.data_azione)).slice(0,6);
+    .filter(c => {
+      if (!c.data_azione) return false;
+      const d = new Date(c.data_azione);
+      return d >= today && (dashDays === 0 || d <= inN);
+    })
+    .sort((a,b) => new Date(a.data_azione)-new Date(b.data_azione))
+    .slice(0, 8);
 
+  // Stage distribution — exclude contacts with no stage
+  const withStage = contacts.filter(c => c.stage && c.stage.trim() !== '');
+  const stageTotal = withStage.length;
   const stageRows = STAGES.map(s => {
-    const n = contacts.filter(c=>c.stage===s).length;
-    const pct = contacts.length ? Math.round(n/contacts.length*100) : 0;
-    return `<div style="margin-bottom:9px">
-      <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+    const n = withStage.filter(c => c.stage === s).length;
+    const pct = stageTotal ? Math.round(n / stageTotal * 100) : 0;
+    if (n === 0) return '';
+    return `<div style="margin-bottom:11px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
         <span class="badge ${STAGE_CLASS[s]}">${s}</span>
-        <span style="font-size:12.5px;color:var(--muted)">${n}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:11px;color:var(--muted);font-weight:500">${n} lead${n!==1?'s':''}</span>
+          <span style="font-size:12px;color:${STAGE_COLOR[s]};font-weight:700;min-width:32px;text-align:right">${pct}%</span>
+        </div>
       </div>
-      <div style="height:5px;background:var(--bg-hover);border-radius:3px;overflow:hidden">
-        <div style="height:100%;width:${pct}%;background:${STAGE_COLOR[s]};border-radius:3px;transition:width .5s"></div>
+      <div style="height:6px;background:var(--bg-hover);border-radius:4px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${STAGE_COLOR[s]};border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px ${STAGE_COLOR[s]}55"></div>
       </div></div>`;
   }).join('');
 
+  const dayOpts = [
+    {v:7,l:'7 giorni'},{v:14,l:'14 giorni'},{v:30,l:'30 giorni'},{v:60,l:'60 giorni'},{v:0,l:'Tutti'}
+  ].map(o=>`<option value="${o.v}"${dashDays===o.v?' selected':''}>${o.l}</option>`).join('');
+
+  const mkActionRow = (c, cls='') => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)" onclick="openContactModal('${c.id}')" title="Apri contatto">
+      <div class="avatar" style="background:${avatarColor(c)};width:30px;height:30px;font-size:11px;cursor:pointer">${initials(c)}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:600;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer">${c.nome||''} ${c.cognome||''}</div>
+        <div style="font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.prossima_azione||'—'}</div>
+      </div>
+      <div style="font-size:12px;color:${cls};font-weight:600;white-space:nowrap">${fmtDate(c.data_azione)}</div>
+    </div>`;
+
   const upRows = upcoming.length
-    ? upcoming.map(c => `
-      <div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-        <div class="avatar" style="background:${avatarColor(c)};width:32px;height:32px;font-size:12px">${initials(c)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-weight:600;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${c.nome||''} ${c.cognome||''}</div>
-          <div style="font-size:11.5px;color:var(--muted)">${c.prossima_azione||'—'}</div>
-        </div>
-        <div style="font-size:12.5px;color:var(--warning);font-weight:500;white-space:nowrap">${fmtDate(c.data_azione)}</div>
-      </div>`).join('')
-    : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px">Nessuna azione nei prossimi 7 giorni 🎉</div>`;
+    ? upcoming.map(c => mkActionRow(c, 'var(--warning)')).join('')
+    : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:24px 16px">
+        <div style="font-size:24px;margin-bottom:8px">🎉</div>
+        Nessuna azione nel periodo selezionato
+       </div>`;
+
+  const expRows = scadute.length
+    ? scadute.slice(0,8).map(c => mkActionRow(c, 'var(--danger)')).join('')
+    + (scadute.length > 8 ? `<div style="font-size:11.5px;color:var(--muted);text-align:center;padding:8px 0">+${scadute.length-8} altre azioni scadute</div>` : '')
+    : `<div style="color:var(--muted);font-size:13px;text-align:center;padding:24px 16px">
+        <div style="font-size:24px;margin-bottom:8px">✅</div>
+        Nessuna azione scaduta
+       </div>`;
 
   document.getElementById('content').innerHTML = `
     <div class="stats-grid">
-      <div class="stat-card c-purple"><div class="stat-label">Totale Contatti</div><div class="stat-value">${contacts.length}</div><div class="stat-sub">nel CRM</div></div>
-      <div class="stat-card c-green"><div class="stat-label">Clienti Attivi</div><div class="stat-value">${nClienti}</div><div class="stat-sub">${contacts.length?Math.round(nClienti/contacts.length*100):0}% del totale</div></div>
-      <div class="stat-card c-orange"><div class="stat-label">Valore Pipeline</div><div class="stat-value">€${fmtMoney(totalOff)}</div><div class="stat-sub">offerte totali</div></div>
-      <div class="stat-card c-red"><div class="stat-label">Azioni Scadute</div><div class="stat-value">${nScadute}</div><div class="stat-sub">da aggiornare</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
-      <div class="table-card" style="padding:18px">
-        <div style="font-weight:700;margin-bottom:14px;font-size:14px">📊 Distribuzione Stage</div>
-        ${contacts.length ? stageRows : `<div class="empty" style="padding:20px"><div class="ei">📭</div><p>Nessun contatto</p></div>`}
+      <div class="stat-card c-purple">
+        <div class="stat-label">Totale Contatti</div>
+        <div class="stat-value">${contacts.length.toLocaleString('it-IT')}</div>
+        <div class="stat-sub">${stageTotal} con stage assegnato</div>
       </div>
-      <div class="table-card" style="padding:18px">
-        <div style="font-weight:700;margin-bottom:14px;font-size:14px">⚡ Prossime Azioni (7 giorni)</div>
-        ${upRows}
+      <div class="stat-card c-green">
+        <div class="stat-label">Clienti Attivi</div>
+        <div class="stat-value">${nClienti}</div>
+        <div class="stat-sub">${stageTotal?Math.round(nClienti/stageTotal*100):0}% del pipeline</div>
+      </div>
+      <div class="stat-card c-orange">
+        <div class="stat-label">Valore Pipeline</div>
+        <div class="stat-value">€${fmtMoney(totalOff)}</div>
+        <div class="stat-sub">offerte totali</div>
+      </div>
+      <div class="stat-card c-red" style="cursor:pointer" onclick="document.getElementById('dash-scadute').scrollIntoView({behavior:'smooth'})">
+        <div class="stat-label">Azioni Scadute</div>
+        <div class="stat-value">${scadute.length}</div>
+        <div class="stat-sub">${scadute.length ? '⚠️ da aggiornare' : '✅ tutto ok'}</div>
       </div>
     </div>
-    <div class="table-card" style="padding:18px">
-      <div style="font-weight:700;margin-bottom:14px;font-size:14px">💰 Riepilogo Economico</div>
+
+    <div style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:16px;margin-bottom:16px">
+      <!-- Stage Distribution -->
+      <div class="table-card" style="padding:20px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <div style="font-weight:700;font-size:14px">📊 Distribuzione Stage</div>
+          ${stageTotal ? `<span style="font-size:11px;color:var(--muted);background:var(--bg-hover);padding:3px 8px;border-radius:20px;border:1px solid var(--border)">${stageTotal} lead${stageTotal!==1?'s':''} con stage</span>` : ''}
+        </div>
+        ${contacts.length === 0
+          ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Nessun contatto</div>`
+          : stageTotal === 0
+          ? `<div style="color:var(--muted);font-size:13px;text-align:center;padding:32px">Nessun contatto con stage assegnato</div>`
+          : `<div style="margin-top:14px">${stageRows}</div>`
+        }
+      </div>
+
+      <!-- Actions column -->
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <!-- Prossime Azioni -->
+        <div class="table-card" style="padding:18px;flex:1">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-weight:700;font-size:14px">⚡ Prossime Azioni</div>
+            <select class="filter-select" style="font-size:11.5px;padding:4px 8px;height:auto" onchange="dashDays=+this.value;renderDashboard()">
+              ${dayOpts}
+            </select>
+          </div>
+          <div style="max-height:220px;overflow-y:auto">${upRows}</div>
+        </div>
+
+        <!-- Azioni Scadute -->
+        <div id="dash-scadute" class="table-card" style="padding:18px;flex:1;border-color:${scadute.length?'rgba(239,68,68,0.25)':'var(--border)'}">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+            <div style="font-weight:700;font-size:14px">🔴 Azioni Scadute</div>
+            ${scadute.length ? `<span style="font-size:11px;font-weight:700;color:var(--danger);background:rgba(239,68,68,0.1);padding:3px 8px;border-radius:20px;border:1px solid rgba(239,68,68,0.2)">${scadute.length}</span>` : ''}
+          </div>
+          <div style="max-height:220px;overflow-y:auto">${expRows}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Economic Summary -->
+    <div class="table-card" style="padding:20px;margin-bottom:16px">
+      <div style="font-weight:700;margin-bottom:16px;font-size:14px">💰 Riepilogo Economico</div>
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
-        <div style="padding:16px;background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.15);border-radius:10px;text-align:center">
-          <div style="font-size:10.5px;color:var(--success);font-weight:600;margin-bottom:6px;letter-spacing:.8px;text-transform:uppercase">Valore Totale Offerte</div>
-          <div style="font-size:22px;font-weight:700;color:var(--success);letter-spacing:-0.04em">€${fmtMoney(totalOff)}</div>
+        <div style="padding:18px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.15);border-radius:var(--radius-md);text-align:center">
+          <div style="font-size:10px;color:var(--success);font-weight:700;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Valore Totale Offerte</div>
+          <div style="font-size:24px;font-weight:700;color:var(--success);letter-spacing:-0.04em">€${fmtMoney(totalOff)}</div>
         </div>
-        <div style="padding:16px;background:rgba(59,130,246,0.08);border:1px solid rgba(59,130,246,0.15);border-radius:10px;text-align:center">
-          <div style="font-size:10.5px;color:#60a5fa;font-weight:600;margin-bottom:6px;letter-spacing:.8px;text-transform:uppercase">Life Time Value Totale</div>
-          <div style="font-size:22px;font-weight:700;color:#60a5fa;letter-spacing:-0.04em">€${fmtMoney(totalLTV)}</div>
+        <div style="padding:18px;background:rgba(59,130,246,0.07);border:1px solid rgba(59,130,246,0.15);border-radius:var(--radius-md);text-align:center">
+          <div style="font-size:10px;color:#60a5fa;font-weight:700;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Life Time Value Totale</div>
+          <div style="font-size:24px;font-weight:700;color:#60a5fa;letter-spacing:-0.04em">€${fmtMoney(totalLTV)}</div>
         </div>
-        <div style="padding:16px;background:rgba(124,94,240,0.08);border:1px solid rgba(124,94,240,0.15);border-radius:10px;text-align:center">
-          <div style="font-size:10.5px;color:var(--primary-text);font-weight:600;margin-bottom:6px;letter-spacing:.8px;text-transform:uppercase">LTV Medio / Cliente</div>
-          <div style="font-size:22px;font-weight:700;color:var(--primary-text);letter-spacing:-0.04em">€${fmtMoney(nClienti?totalLTV/nClienti:0)}</div>
+        <div style="padding:18px;background:rgba(124,94,240,0.07);border:1px solid rgba(124,94,240,0.15);border-radius:var(--radius-md);text-align:center">
+          <div style="font-size:10px;color:var(--primary-text);font-weight:700;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">LTV Medio / Cliente</div>
+          <div style="font-size:24px;font-weight:700;color:var(--primary-text);letter-spacing:-0.04em">€${fmtMoney(nClienti?totalLTV/nClienti:0)}</div>
         </div>
       </div>
     </div>`;
@@ -1220,27 +1315,101 @@ async function bulkChangeField() {
 // ─────────────────────────────────────────────
 // PIPELINE
 // ─────────────────────────────────────────────
+let _dragId = null;
+
 function renderPipeline() {
+  const content = document.getElementById('content');
+  content.style.padding = '14px 16px';
+  content.style.overflow = 'hidden';
+  content.style.display = 'flex';
+  content.style.flexDirection = 'column';
+
+  const totalLeads = contacts.length;
+  const totalOff   = contacts.reduce((s,c)=>s+(parseFloat(c.valore_offerta)||0),0);
+  const totalLTV   = contacts.reduce((s,c)=>s+(parseFloat(c.ltv)||0),0);
+  const nClienti   = contacts.filter(c=>c.stage==='Cliente').length;
+  const convRate   = totalLeads ? Math.round(nClienti/totalLeads*100) : 0;
+
+  const summary = `<div class="pipeline-summary">
+    <div class="ps-card"><div class="ps-label">Lead Totali</div><div class="ps-value">${totalLeads}</div></div>
+    <div class="ps-card"><div class="ps-label">Valore Pipeline</div><div class="ps-value money">€${fmtMoney(totalOff)}</div></div>
+    <div class="ps-card"><div class="ps-label">LTV Totale</div><div class="ps-value money">€${fmtMoney(totalLTV)}</div></div>
+    <div class="ps-card"><div class="ps-label">Clienti / Conv.</div><div class="ps-value">${nClienti} <span style="font-size:13px;color:var(--text-sec);font-weight:500">(${convRate}%)</span></div></div>
+  </div>`;
+
   const cols = STAGES.map(stage => {
     const items = contacts.filter(c=>c.stage===stage);
     const total = items.reduce((s,c)=>s+(parseFloat(c.valore_offerta)||0),0);
     const cards = items.map(c=>`
-      <div class="pipe-card" onclick="openContactModal('${c.id}')">
+      <div class="pipe-card"
+           draggable="true"
+           data-id="${c.id}"
+           ondragstart="pipeDragStart(event,'${c.id}')"
+           ondragend="pipeDragEnd(event)"
+           onclick="if(!window._pipeDragged) openContactModal('${c.id}')">
         <div class="pipe-card-name">${c.nome||''} ${c.cognome||''}</div>
-        <div class="pipe-card-co">${c.azienda||''}</div>
+        ${c.azienda?`<div class="pipe-card-co">${c.azienda}</div>`:''}
         ${c.valore_offerta?`<div class="pipe-card-val">€${fmtMoney(c.valore_offerta)}</div>`:''}
-        ${c.priorita?`<span class="badge ${PRIO_CLASS[c.priorita]}" style="font-size:11px;margin-top:4px">${c.priorita}</span>`:''}
-      </div>`).join('') || `<div style="font-size:12.5px;color:var(--muted);text-align:center;padding:12px">Vuoto</div>`;
+        ${c.prossima_azione?`<div class="pipe-card-action">→ ${c.prossima_azione}</div>`:''}
+        ${c.priorita?`<span class="badge ${PRIO_CLASS[c.priorita]}" style="font-size:10px;margin-top:4px;display:inline-block">${c.priorita}</span>`:''}
+      </div>`).join('') || `<div class="pipe-empty">Nessun contatto</div>`;
     const col = STAGE_COLOR[stage];
-    return `<div class="pipe-col">
-      <div class="pipe-header" style="background:${col}18;color:${col}">
-        <span>${stage}</span><span class="pipe-count" style="background:${col}28">${items.length}</span>
+    return `<div class="pipe-col"
+                 data-stage="${stage}"
+                 ondragover="pipeDragOver(event)"
+                 ondragleave="pipeDragLeave(event)"
+                 ondrop="pipeDrop(event,'${stage}')">
+      <div class="pipe-header" style="background:${col}15;border-top:2px solid ${col}">
+        <span style="color:${col}">${stage}</span>
+        <span class="pipe-count" style="background:${col}25;color:${col}">${items.length}</span>
       </div>
       ${total?`<div class="pipe-total">€${fmtMoney(total)}</div>`:''}
       <div class="pipe-cards">${cards}</div>
     </div>`;
   }).join('');
-  document.getElementById('content').innerHTML = `<div class="pipeline-wrap">${cols}</div>`;
+
+  content.innerHTML = `<div class="pipeline-board">${summary}<div class="pipeline-wrap">${cols}</div></div>`;
+}
+
+function pipeDragStart(e, id) {
+  window._pipeDragged = false;
+  _dragId = id;
+  e.dataTransfer.effectAllowed = 'move';
+  setTimeout(() => { const el = document.querySelector(`[data-id="${id}"]`); if(el) el.classList.add('dragging'); }, 0);
+}
+
+function pipeDragEnd(e) {
+  e.target.classList.remove('dragging');
+  document.querySelectorAll('.pipe-col.drag-over').forEach(el => el.classList.remove('drag-over'));
+  setTimeout(() => { window._pipeDragged = false; }, 60);
+}
+
+function pipeDragOver(e) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  e.currentTarget.classList.add('drag-over');
+}
+
+function pipeDragLeave(e) {
+  if (!e.currentTarget.contains(e.relatedTarget)) {
+    e.currentTarget.classList.remove('drag-over');
+  }
+}
+
+async function pipeDrop(e, stage) {
+  e.preventDefault();
+  window._pipeDragged = true;
+  e.currentTarget.classList.remove('drag-over');
+  const id = _dragId;
+  _dragId = null;
+  if (!id) return;
+  const contact = contacts.find(x => x.id === id);
+  if (!contact || contact.stage === stage) return;
+  const ok = await updateContactInDB(id, { stage });
+  if (ok) {
+    toast(`"${contact.nome||contact.cognome}" → ${stage} ✓`, 'ok');
+    renderPipeline();
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -1301,6 +1470,15 @@ async function saveContact() {
   await loadContacts();
   closeContactModal();
   toast(editingId ? 'Contatto aggiornato ✓' : 'Contatto aggiunto ✓', 'ok');
+}
+
+// Helper: update contact fields in DB and in local array
+async function updateContactInDB(id, fields) {
+  const { error } = await db.from('contacts').update(fields).eq('id', id);
+  if (error) { console.error('[updateContact] error:', error.message); return false; }
+  const c = contacts.find(x => x.id === id);
+  if (c) Object.assign(c, fields);
+  return true;
 }
 
 async function deleteContact(id) {
@@ -1701,6 +1879,20 @@ async function fetchEmails(forceSync = false, silent = false) {
   }
 
   emailState.emails = data || [];
+
+  // When loading INBOX, update contacts to Alta if they sent us an email (they replied)
+  if (emailState.folder === 'INBOX' && emailState.emails.length) {
+    const inboxSenders = new Set(
+      emailState.emails.map(e => (e.from_email || '').toLowerCase().trim()).filter(Boolean)
+    );
+    const toUpgrade = contacts.filter(c =>
+      c.email && inboxSenders.has(c.email.toLowerCase().trim()) && c.priorita !== 'Alta'
+    );
+    for (const c of toUpgrade) {
+      await updateContactInDB(c.id, { priorita: 'Alta' });
+    }
+  }
+
   _renderEmailList();
 }
 
@@ -1838,6 +2030,10 @@ async function sendReply() {
       body: { to: rc.to, subject: replySubject, body, inReplyTo: rc.messageId, threadId: rc.threadId }
     });
     if (fnErr) throw new Error(fnErr.message);
+    // Update contact priority to Media when user manually replies
+    const replyToEmail = (rc.to || '').toLowerCase().trim();
+    const replyContact = contacts.find(c => c.email && c.email.toLowerCase().trim() === replyToEmail);
+    if (replyContact) await updateContactInDB(replyContact.id, { priorita: 'Media' });
     toast('Risposta inviata ✓', 'ok');
     document.getElementById('replyBody').value = '';
     if (emailState.selectedId) openEmail(emailState.selectedId);
@@ -2118,35 +2314,42 @@ async function generateEmailWithGroq() {
     </div>`;
 
   try {
-    const bodyPrompt = `Sei un esperto copywriter italiano specializzato in cold email B2B ad alto tasso di risposta.
+    const bodyPrompt = `Scrivi il corpo di una cold email B2B in italiano perfetto, senza errori grammaticali o ortografici.
 
-Scrivi UN'EMAIL di cold outreach professionale in ITALIANO usando queste informazioni:
-OBIETTIVO: ${d.obiettivo}
-TARGET: ${d.target_ruolo}, aziende con ${d.dipendenti} dipendenti, fatturato ${d.fatturato}
-CHI SCRIVE: ${d.presentazione}
-PRODOTTO/SERVIZIO: ${d.prodotto}
-PUNTO DI FORZA: ${d.forza}
-GARANZIA: ${d.garanzia}
+CONTESTO:
+- Obiettivo: ${d.obiettivo}
+- Destinatario: ${d.target_ruolo} di aziende con ${d.dipendenti} dipendenti e fatturato ${d.fatturato}
+- Mittente: ${d.presentazione}
+- Prodotto/servizio: ${d.prodotto}
+- Punto di forza unico: ${d.forza}
+- Garanzia offerta: ${d.garanzia}
 
-STRUTTURA OBBLIGATORIA (rispetta questo ordine):
-1. Apertura: Una frase che si rivolge alla persona per nome (usa {{nome}}) e le fa un complimento sincero e specifico basato sul suo ruolo ({{ruolo}}) in {{azienda}}. NON usare "Spero che tu stia bene" o formule banali.
-2. Presentazione: 1-2 frasi su chi scrive (basate su "${d.presentazione}").
-3. Proposta: Una frase che descrive il prodotto/servizio e il suo punto di forza principale.
-4. Garanzia: Una frase sulla garanzia offerta.
-5. CTA: Invita a rispondere all'email per fissare un appuntamento gratuito e senza impegno.
-6. Chiusura:
+STRUTTURA (segui questo ordine esatto, senza titoli o numerazione):
+
+[APERTURA] Rivolgiti a {{nome}} con una frase breve e incisiva che riconosce qualcosa di specifico e concreto sul suo ruolo ({{ruolo}}) in {{azienda}}. Deve sembrare scritta per lui, non copiata. Evita frasi come "Spero che tu stia bene", "La contatto perché", o qualsiasi formula di apertura generica.
+
+[PRESENTAZIONE] In 1-2 frasi presenta chi scrive (basati su: ${d.presentazione}). Sii diretto, niente giri di parole.
+
+[PROPOSTA] In 1-2 frasi spiega cosa offri e il vantaggio concreto che porta. Parla di risultati e benefici per il destinatario, non di caratteristiche del prodotto.
+
+[GARANZIA] Una frase sulla garanzia. Deve ridurre il rischio percepito e dare sicurezza.
+
+[CTA] Una domanda o invito chiaro e semplice per fissare una breve chiamata o appuntamento gratuito. Rendi facile dire sì.
+
+[FIRMA]
 Cordiali saluti,
 {{mittente_nome}} {{mittente_cognome}}
 {{mittente_ruolo}}
 
-REGOLE TASSATIVE:
-- Usa ESATTAMENTE questi placeholder con doppie graffe: {{nome}}, {{cognome}}, {{azienda}}, {{ruolo}}, {{mittente_nome}}, {{mittente_cognome}}, {{mittente_ruolo}}
-- Scrivi SOLO il corpo dell'email (nessun oggetto, nessun titolo)
-- Tono: professionale ma caldo, diretto, non sembra spam
-- Lunghezza: max 180 parole
-- Non inventare dati non forniti`;
+REGOLE OBBLIGATORIE:
+- Usa ESATTAMENTE questi placeholder: {{nome}}, {{azienda}}, {{ruolo}}, {{mittente_nome}}, {{mittente_cognome}}, {{mittente_ruolo}}
+- SOLO il corpo dell'email — nessun oggetto, nessun titolo, nessuna spiegazione
+- Italiano impeccabile: niente errori di grammatica, ortografia o punteggiatura
+- Tono: diretto, umano, professionale — mai commerciale o da newsletter
+- Lunghezza: 120-160 parole
+- Non inventare informazioni non fornite`;
 
-    const subjectPrompt = `Scrivi SOLO l'oggetto di una cold email (max 8 parole, in italiano, senza virgolette) con obiettivo: ${d.obiettivo}, rivolta a: ${d.target_ruolo}. L'oggetto deve sembrare personale e curioso, non pubblicitario.`;
+    const subjectPrompt = `Crea l'oggetto di una cold email in italiano (massimo 7 parole, senza virgolette) per un ${d.target_ruolo}. Obiettivo della email: ${d.obiettivo}. L'oggetto deve incuriosire, sembrare personale e rilevante, mai generico o pubblicitario. Rispondi solo con l'oggetto, nient'altro.`;
 
     const { data: groqData, error: groqErr } = await db.functions.invoke('groq-generate', {
       body: { bodyPrompt, subjectPrompt }
@@ -2177,12 +2380,20 @@ function renderCampaignEditor() {
 
   const contactsHtml = targetContacts.length
     ? targetContacts.map(c => {
-        const name     = [c.nome, c.cognome].filter(Boolean).join(' ') || c.email || 'Contatto';
-        const hasEmail = !!(c.email && c.email.trim());
-        return `<label class="ce-contact-item">
-          <input type="checkbox" ${hasEmail ? 'checked' : 'disabled'} data-contact-id="${c.id}" onchange="updateCampaignSelectionCount()">
+        const name        = [c.nome, c.cognome].filter(Boolean).join(' ') || c.email || 'Contatto';
+        const hasEmail    = !!(c.email && c.email.trim());
+        const isFollowup  = c.stage === 'Followup inviato';
+        const isDisabled  = !hasEmail || isFollowup;
+        const emailBadge  = hasEmail
+          ? `<span class="ce-contact-email">${escHtml(c.email)}</span>`
+          : `<span class="ce-no-email">⚠ no email</span>`;
+        const followupBadge = isFollowup
+          ? `<span class="ce-no-email" style="color:#2dd4bf">⛔ followup inviato</span>`
+          : '';
+        return `<label class="ce-contact-item"${isFollowup ? ' style="opacity:0.5"' : ''}>
+          <input type="checkbox" ${!isDisabled ? 'checked' : 'disabled'} data-contact-id="${c.id}" onchange="updateCampaignSelectionCount()">
           <span class="ce-contact-name">${escHtml(name)}</span>
-          ${hasEmail ? `<span class="ce-contact-email">${escHtml(c.email)}</span>` : `<span class="ce-no-email">⚠ no email</span>`}
+          ${emailBadge}${followupBadge}
         </label>`;
       }).join('')
     : `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Nessun contatto con ruolo "${escHtml(d.target_ruolo)}"</div>`;
@@ -2308,6 +2519,9 @@ async function runCampaignSend() {
         body: { to: c.email, subject, body }
       });
       if (fnErr) throw new Error(fnErr.message);
+      // Update stage and priority after successful send
+      const newStage = c.stage === 'Email inviata' ? 'Followup inviato' : 'Email inviata';
+      await updateContactInDB(c.id, { stage: newStage, priorita: 'Bassa' });
     } catch (e) {
       console.error('[campaign] failed to send to', c.email, e);
       campaignState.failed++;
@@ -2338,7 +2552,7 @@ function renderCampaignDashboard() {
           <div class="cd-title">📊 Campagna Email</div>
           <div style="font-size:13px;color:var(--text-sec);margin-top:3px">${escHtml(s.draft?.obiettivo||'')} · Target: <strong>${escHtml(s.draft?.target_ruolo||'')}</strong></div>
         </div>
-        <button class="btn btn-primary" onclick="startNewCampaign()">＋ Nuova Campagna</button>
+        <button class="btn btn-primary" onclick="startNewCampaign()" ${s.running ? 'disabled title="Campagna in corso — attendi il completamento"' : ''} style="${s.running ? 'opacity:0.4;cursor:not-allowed;' : ''}">＋ Nuova Campagna</button>
       </div>
 
       <div class="cd-card">
@@ -2409,6 +2623,10 @@ function updateCampaignDashboard() {
 }
 
 function startNewCampaign() {
+  if (campaignState.running) {
+    toast('Campagna in corso — attendi il completamento prima di crearne una nuova.', 'warn');
+    return;
+  }
   campaignDraft = {};
   campaignState = { active: false, draft: {}, emailTemplate: '', emailSubject: '', targetContacts: [], sent: 0, total: 0, running: false, startedAt: null, failed: 0 };
   renderCampaigns();

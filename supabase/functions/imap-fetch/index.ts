@@ -123,9 +123,19 @@ serve(async (req: Request) => {
 
     let upserted = 0;
     if (emails.length > 0) {
+      // Preserve local read status: don't overwrite emails already marked as read in DB
+      const messageIds = emails.map(e => e.message_id);
+      const { data: alreadyRead } = await supa
+        .from("emails")
+        .select("message_id")
+        .in("message_id", messageIds)
+        .eq("read", true);
+      const readSet = new Set((alreadyRead || []).map((r: { message_id: string }) => r.message_id));
+      const emailsToUpsert = emails.map(e => readSet.has(e.message_id) ? { ...e, read: true } : e);
+
       const { error: upsertErr } = await supa
         .from("emails")
-        .upsert(emails, { onConflict: "message_id", ignoreDuplicates: false });
+        .upsert(emailsToUpsert, { onConflict: "message_id", ignoreDuplicates: false });
       if (upsertErr) throw new Error("Errore salvataggio email: " + upsertErr.message);
       upserted = emails.length;
     }
