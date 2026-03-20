@@ -3,7 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CRM Pro — Gestione Contatti</title>
+<title>AstralPage CRM</title>
+<link rel="icon" href="./astralpage_logo.svg" type="image/svg+xml">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -56,10 +57,9 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
 
 /* ── SIDEBAR ── */
 .sidebar { width: 248px; background: var(--sidebar); display: flex; flex-direction: column; flex-shrink: 0; border-right: 1px solid var(--border); }
-.sidebar-logo { padding: 20px 18px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); }
-.logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--primary), var(--primary-dark)); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; box-shadow: 0 4px 14px var(--primary-glow); }
-.sidebar-logo h1 { color: var(--text); font-size: 16px; font-weight: 700; line-height: 1.2; letter-spacing: -0.03em; }
-.sidebar-logo p { color: var(--muted); font-size: 11px; font-weight: 400; }
+.sidebar-logo { padding: 22px 18px 18px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border); }
+.sidebar-logo-img { height: 28px; width: auto; object-fit: contain; filter: brightness(0) invert(1); }
+.sidebar-logo p { color: var(--muted); font-size: 10.5px; font-weight: 400; letter-spacing: 0.02em; }
 .sidebar-nav { padding: 16px 10px; flex: 1; overflow-y: auto; }
 .nav-section-title { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 1.4px; text-transform: uppercase; padding: 0 10px; margin: 0 0 6px; }
 .nav-section { margin-bottom: 24px; }
@@ -289,13 +289,11 @@ textarea { resize: vertical; min-height: 78px; }
   box-shadow: var(--shadow-lg); position: relative;
 }
 .login-logo { text-align: center; margin-bottom: 32px; }
-.login-logo .logo-circle {
-  width: 60px; height: 60px; border-radius: var(--radius-md); margin: 0 auto 14px;
-  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-  display: flex; align-items: center; justify-content: center; font-size: 26px;
-  box-shadow: 0 8px 24px var(--primary-glow);
+.login-logo-img {
+  height: 40px; width: auto; display: block; margin: 0 auto 20px;
+  filter: brightness(0) invert(1);
 }
-.login-logo h2 { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; letter-spacing: -0.05em; }
+.login-logo h2 { font-size: 15px; font-weight: 500; color: var(--text-sec); margin-bottom: 6px; letter-spacing: 0.02em; }
 .login-logo p { font-size: 13px; color: var(--text-sec); }
 .login-field { margin-bottom: 16px; }
 .login-field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text-sec); margin-bottom: 7px; }
@@ -460,8 +458,8 @@ textarea { resize: vertical; min-height: 78px; }
 <div id="loginScreen">
   <div class="login-box">
     <div class="login-logo">
-      <div class="logo-circle">💼</div>
-      <h2>CRM Pro</h2>
+      <img src="./astralpage_logo.svg" alt="AstralPage" class="login-logo-img">
+      <h2>CRM · Gestione Clienti</h2>
       <p>Inserisci le tue credenziali per accedere</p>
     </div>
     <form id="loginForm" onsubmit="handleLogin(event)">
@@ -492,8 +490,8 @@ textarea { resize: vertical; min-height: 78px; }
 <!-- ═══════════════ SIDEBAR ═══════════════ -->
 <aside class="sidebar">
   <div class="sidebar-logo">
-    <div class="logo-icon">💼</div>
-    <div><h1>CRM Pro</h1><p>Gestione Contatti</p></div>
+    <img src="./astralpage_logo.svg" alt="AstralPage" class="sidebar-logo-img">
+    <p>CRM · Gestione Clienti</p>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-section">
