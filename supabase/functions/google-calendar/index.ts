@@ -240,6 +240,114 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
   };
 }
 
+async function handleUpdateEvent(body: Record<string, unknown>, userId: string, supabase: ReturnType<typeof createClient>) {
+  const { event_id, google_event_id, title, start_time, end_time, guests, color, notes } = body as {
+    event_id?: string;
+    google_event_id?: string;
+    title: string;
+    start_time: string;
+    end_time?: string;
+    guests?: string[];
+    color?: string;
+    notes?: string;
+  };
+
+  if (!title || !start_time) return { error: 'Missing title or start_time' };
+
+  let gEventId = google_event_id;
+  let googleError: string | null = null;
+
+  // Look up google_event_id from local DB if not provided
+  if (event_id && !gEventId) {
+    const { data } = await supabase.from('calendar_events').select('google_event_id').eq('id', event_id).eq('user_id', userId).single();
+    if (data?.google_event_id) gEventId = data.google_event_id;
+  }
+
+  // Update in Google Calendar
+  if (gEventId) {
+    try {
+      const accessToken = await getValidAccessToken(userId, supabase);
+      const endDT = end_time || new Date(new Date(start_time).getTime() + 3600000).toISOString();
+      const gcalEvent: Record<string, unknown> = {
+        summary: title,
+        start: { dateTime: start_time, timeZone: 'Europe/Rome' },
+        end: { dateTime: endDT, timeZone: 'Europe/Rome' },
+      };
+      if (notes) gcalEvent.description = notes;
+      if (guests && guests.length > 0) gcalEvent.attendees = guests.map((email: string) => ({ email }));
+
+      const res = await fetch(`${GOOGLE_CALENDAR_BASE}/calendars/primary/events/${encodeURIComponent(gEventId)}`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(gcalEvent),
+      });
+
+      if (!res.ok) {
+        const errBody = await res.text();
+        googleError = `Google API ${res.status}: ${errBody}`;
+        console.error('Google Calendar update_event failed:', googleError);
+      }
+    } catch (e) {
+      googleError = e instanceof Error ? e.message : String(e);
+      console.error('Google Calendar update_event exception:', googleError);
+    }
+  }
+
+  // Update local DB record (if local event_id provided)
+  if (event_id) {
+    const { error } = await supabase.from('calendar_events').update({
+      title, start_time, end_time: end_time || null,
+      guests: guests || [], color: color || '#7c5ef0',
+      notes: notes || null, updated_at: new Date().toISOString(),
+    }).eq('id', event_id).eq('user_id', userId);
+    if (error) return { error: `DB update failed: ${error.message}` };
+  }
+
+  return { success: true, google_error: googleError };
+}
+
+async function handleDeleteEvent(body: Record<string, unknown>, userId: string, supabase: ReturnType<typeof createClient>) {
+  const { event_id, google_event_id } = body as { event_id?: string; google_event_id?: string };
+
+  if (!event_id && !google_event_id) return { error: 'Missing event_id or google_event_id' };
+
+  let gEventId = google_event_id;
+  let googleError: string | null = null;
+
+  // Look up google_event_id from DB if not provided
+  if (event_id && !gEventId) {
+    const { data } = await supabase.from('calendar_events').select('google_event_id').eq('id', event_id).eq('user_id', userId).single();
+    if (data?.google_event_id) gEventId = data.google_event_id;
+  }
+
+  // Delete from Google Calendar
+  if (gEventId) {
+    try {
+      const accessToken = await getValidAccessToken(userId, supabase);
+      const res = await fetch(`${GOOGLE_CALENDAR_BASE}/calendars/primary/events/${encodeURIComponent(gEventId)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (!res.ok && res.status !== 410) { // 410 = already deleted
+        const errBody = await res.text();
+        googleError = `Google API ${res.status}: ${errBody}`;
+        console.error('Google Calendar delete_event failed:', googleError);
+      }
+    } catch (e) {
+      googleError = e instanceof Error ? e.message : String(e);
+      console.error('Google Calendar delete_event exception:', googleError);
+    }
+  }
+
+  // Delete from local DB
+  if (event_id) {
+    const { error } = await supabase.from('calendar_events').delete().eq('id', event_id).eq('user_id', userId);
+    if (error) return { error: `DB delete failed: ${error.message}` };
+  }
+
+  return { success: true, google_error: googleError };
+}
+
 async function handleDisconnect(userId: string, supabase: ReturnType<typeof createClient>) {
   try {
     const { data: token } = await supabase
@@ -301,6 +409,12 @@ serve(async (req) => {
         break;
       case 'create_event':
         result = await handleCreateEvent(params as Record<string, unknown>, userId, supabase);
+        break;
+      case 'update_event':
+        result = await handleUpdateEvent(params as Record<string, unknown>, userId, supabase);
+        break;
+      case 'delete_event':
+        result = await handleDeleteEvent(params as Record<string, unknown>, userId, supabase);
         break;
       case 'disconnect':
         result = await handleDisconnect(userId, supabase);
