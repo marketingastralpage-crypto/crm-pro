@@ -236,14 +236,16 @@ serve(async (req) => {
   }
 
   try {
+    const authHeader = req.headers.get('Authorization') || '';
+    const jwt = authHeader.replace('Bearer ', '');
+
     const supabase = createClient(
       getEnv('SUPABASE_URL'),
-      getEnv('SUPABASE_SERVICE_ROLE_KEY'),
-      { global: { headers: { Authorization: req.headers.get('Authorization') || '' } } }
+      getEnv('SUPABASE_SERVICE_ROLE_KEY')
     );
 
-    // Get authenticated user
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    // Get authenticated user by passing JWT explicitly (works with legacy JWT secret)
+    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
     if (authError || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
