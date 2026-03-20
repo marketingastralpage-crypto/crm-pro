@@ -450,6 +450,78 @@ textarea { resize: vertical; min-height: 78px; }
 .cd-status-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
 .cd-status-running .cd-status-dot { animation: cd-blink 1s step-start infinite; }
 @keyframes cd-blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+/* ── CALENDAR ── */
+.cal-wrap { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.cal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; flex-shrink: 0; flex-wrap: wrap; }
+.cal-nav { display: flex; align-items: center; gap: 6px; }
+.cal-nav-btn { background: var(--bg-elevated); border: 1px solid var(--border-md); color: var(--text-sec); border-radius: var(--radius-sm); padding: 6px 10px; cursor: pointer; font-size: 14px; transition: var(--transition); }
+.cal-nav-btn:hover { background: var(--bg-hover); color: var(--text); }
+.cal-month-label { font-size: 17px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); min-width: 180px; text-align: center; }
+.cal-view-switcher { display: flex; gap: 2px; background: var(--bg-elevated); border: 1px solid var(--border-md); border-radius: var(--radius-sm); padding: 2px; }
+.cal-view-btn { padding: 5px 12px; border-radius: 4px; border: none; background: none; color: var(--text-sec); cursor: pointer; font-size: 12.5px; font-weight: 500; transition: var(--transition); font-family: inherit; }
+.cal-view-btn.active { background: var(--primary); color: #fff; }
+.cal-spacer { flex: 1; }
+.cal-connect-banner { display: flex; align-items: center; gap: 14px; background: rgba(124,94,240,0.1); border: 1px solid rgba(124,94,240,0.25); border-radius: var(--radius-md); padding: 12px 18px; margin-bottom: 16px; }
+.cal-connect-banner-icon { font-size: 22px; flex-shrink: 0; }
+.cal-connect-banner-text { flex: 1; font-size: 13px; color: var(--text-sec); }
+.cal-connect-banner-text strong { color: var(--text); display: block; font-size: 13.5px; margin-bottom: 2px; }
+
+/* Month grid */
+.cal-grid { flex: 1; display: flex; flex-direction: column; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.cal-weekdays { display: grid; grid-template-columns: repeat(7,1fr); background: var(--bg-elevated); border-bottom: 1px solid var(--border); }
+.cal-weekday { text-align: center; padding: 8px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
+.cal-days { display: grid; grid-template-columns: repeat(7,1fr); grid-template-rows: repeat(6,1fr); flex: 1; min-height: 0; }
+.cal-day { border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); padding: 6px 8px; display: flex; flex-direction: column; gap: 2px; cursor: pointer; transition: background .12s; min-height: 90px; overflow: hidden; }
+.cal-day:hover { background: var(--bg-hover); }
+.cal-day:nth-child(7n) { border-right: none; }
+.cal-day.other-month .cal-day-num { color: var(--muted); opacity: 0.4; }
+.cal-day-num { font-size: 12.5px; font-weight: 600; color: var(--text-sec); width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
+.cal-day.today .cal-day-num, .cal-day-num.today-num { background: var(--primary); color: #fff; box-shadow: 0 0 10px var(--primary-glow); }
+.cal-event-pill { font-size: 11px; font-weight: 500; padding: 2px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; color: #fff; flex-shrink: 0; }
+.cal-event-pill:hover { opacity: 0.85; }
+.cal-more { font-size: 10.5px; color: var(--muted); padding: 1px 4px; }
+
+/* Week grid */
+.cal-week-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.cal-week-header { display: grid; grid-template-columns: 52px repeat(7,1fr); background: var(--bg-elevated); border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.cal-week-day-header { text-align: center; padding: 8px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.cal-week-day-header.today { color: var(--primary-text); }
+.cal-week-body { display: flex; flex: 1; overflow-y: auto; min-height: 0; }
+.cal-week-times { width: 52px; flex-shrink: 0; border-right: 1px solid var(--border); }
+.cal-week-time { height: 48px; display: flex; align-items: flex-start; justify-content: flex-end; padding: 3px 8px 0 0; font-size: 10.5px; color: var(--muted); border-bottom: 1px solid var(--border); box-sizing: border-box; }
+.cal-week-cols { display: grid; grid-template-columns: repeat(7,1fr); flex: 1; position: relative; }
+.cal-week-col { border-right: 1px solid var(--border); position: relative; }
+.cal-week-col:last-child { border-right: none; }
+.cal-week-hour-line { height: 48px; border-bottom: 1px solid var(--border); box-sizing: border-box; }
+.cal-week-event { position: absolute; left: 2px; right: 2px; border-radius: 4px; padding: 2px 5px; font-size: 11px; font-weight: 500; color: #fff; overflow: hidden; cursor: pointer; z-index: 1; }
+
+/* Call fissata popup */
+.cf-popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); z-index: 2000; display: flex; align-items: center; justify-content: center; }
+.cf-popup { background: var(--bg-surface); border: 1px solid var(--border-md); border-radius: var(--radius-xl); padding: 28px 30px; max-width: 480px; width: 90%; box-shadow: var(--shadow-lg); }
+.cf-popup-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 16px; }
+.cf-popup-title { font-size: 16px; font-weight: 700; letter-spacing: -0.03em; color: var(--text); }
+.cf-popup-sub { font-size: 12.5px; color: var(--text-sec); margin-top: 3px; }
+.cf-popup-close { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 4px; line-height: 1; }
+.cf-popup-close:hover { color: var(--text); }
+.cf-popup-body { display: flex; flex-direction: column; gap: 12px; }
+.cf-popup-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; flex-wrap: wrap; align-items: center; }
+.cf-popup-footer .cf-no-show { margin-right: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-sec); cursor: pointer; }
+.cf-popup-footer .cf-no-show input { accent-color: var(--primary); cursor: pointer; }
+.cf-not-connected { text-align: center; padding: 8px 0; }
+.cf-not-connected-icon { font-size: 40px; margin-bottom: 12px; }
+.cf-not-connected-title { font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+.cf-not-connected-sub { font-size: 13px; color: var(--text-sec); line-height: 1.6; margin-bottom: 16px; }
+
+/* Cal event modal */
+.cal-event-modal { background: var(--bg-surface); border: 1px solid var(--border-md); border-radius: var(--radius-xl); padding: 0; max-width: 520px; width: 90%; box-shadow: var(--shadow-lg); }
+.cal-event-modal .modal-header { padding: 20px 24px 14px; border-bottom: 1px solid var(--border); }
+.cal-event-modal .modal-body { padding: 18px 24px; display: flex; flex-direction: column; gap: 14px; }
+.cal-event-modal .modal-footer { padding: 14px 24px 20px; display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--border); }
+.cal-color-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.cal-color-swatch { width: 26px; height: 26px; border-radius: 50%; cursor: pointer; border: 3px solid transparent; transition: var(--transition); }
+.cal-color-swatch.selected { border-color: #fff; box-shadow: 0 0 0 2px var(--primary); }
+.cal-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 </style>
 </head>
 <body>
@@ -507,6 +579,9 @@ textarea { resize: vertical; min-height: 78px; }
       </div>
       <div class="nav-item" data-view="email" onclick="navigate('email')">
         <span class="ni">📧</span><span>Email</span>
+      </div>
+      <div class="nav-item" data-view="calendario" onclick="navigate('calendario')">
+        <span class="ni">📅</span><span>Calendario</span>
       </div>
     </div>
     <div class="nav-section">
@@ -663,6 +738,70 @@ textarea { resize: vertical; min-height: 78px; }
   </div>
 </div>
 
+<!-- ═══════════════ CALENDAR EVENT MODAL ═══════════════ -->
+<div class="overlay hidden" id="calEventModal" onclick="if(event.target===this)closeCalEventModal()">
+  <div class="modal cal-event-modal">
+    <div class="modal-header">
+      <h2 id="calEventModalTitle">Nuovo Evento</h2>
+      <button class="modal-close" onclick="closeCalEventModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Titolo *</label>
+        <input id="cal_title" type="text" placeholder="es. Call con Mario Rossi">
+      </div>
+      <div class="cal-row-2">
+        <div class="form-group">
+          <label>Data inizio *</label>
+          <input id="cal_start_date" type="date">
+        </div>
+        <div class="form-group">
+          <label>Ora inizio</label>
+          <input id="cal_start_time" type="time" value="09:00">
+        </div>
+      </div>
+      <div class="cal-row-2">
+        <div class="form-group">
+          <label>Data fine</label>
+          <input id="cal_end_date" type="date">
+        </div>
+        <div class="form-group">
+          <label>Ora fine</label>
+          <input id="cal_end_time" type="time" value="10:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ospiti (una email per riga)</label>
+        <textarea id="cal_guests" rows="3" style="resize:vertical" placeholder="mario@example.com&#10;anna@example.com"></textarea>
+      </div>
+      <div class="form-group">
+        <label>Colore</label>
+        <div class="cal-color-picker" id="calColorPicker">
+          <div class="cal-color-swatch selected" style="background:#7c5ef0" data-color="#7c5ef0" onclick="selectCalColor(this)"></div>
+          <div class="cal-color-swatch" style="background:#ef4444" data-color="#ef4444" onclick="selectCalColor(this)"></div>
+          <div class="cal-color-swatch" style="background:#3b82f6" data-color="#3b82f6" onclick="selectCalColor(this)"></div>
+          <div class="cal-color-swatch" style="background:#22c55e" data-color="#22c55e" onclick="selectCalColor(this)"></div>
+          <div class="cal-color-swatch" style="background:#f59e0b" data-color="#f59e0b" onclick="selectCalColor(this)"></div>
+          <div class="cal-color-swatch" style="background:#ec4899" data-color="#ec4899" onclick="selectCalColor(this)"></div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="cal_notes" rows="3" style="resize:vertical" placeholder="Note aggiuntive sull'evento..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeCalEventModal()">Annulla</button>
+      <button class="btn btn-primary" onclick="saveCalendarEvent()">📅 Crea Evento</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ CALL FISSATA POPUP ═══════════════ -->
+<div class="cf-popup-overlay hidden" id="callFissataPopup" onclick="if(event.target===this)closeCallFissataPopup()">
+  <div class="cf-popup" id="callFissataPopupInner"></div>
+</div>
+
 <!-- TOAST -->
 <div class="toast" id="toast">
   <span id="toastIcon">✓</span><span id="toastMsg"></span>
@@ -715,6 +854,15 @@ let selectedContacts = new Set();
 let contactsPage = 0;
 let contactsPageSize = 100;
 
+// Calendar state
+let calendarEvents = [];
+let calendarConnected = false;
+let currentCalDate = new Date();
+let calView = 'month';
+let calSelectedColor = '#7c5ef0';
+// IMPORTANT: replace with your actual Google OAuth Client ID
+const GOOGLE_CLIENT_ID = '1039132871315-8c58atac9ujkgitiaqi6omr48pioj6rj.apps.googleusercontent.com';
+
 // ─────────────────────────────────────────────
 // AUTH
 // ─────────────────────────────────────────────
@@ -757,6 +905,11 @@ async function handleLogin(e) {
 
   hideLoginScreen(data.user);
   await bootApp();
+
+  if (window._pendingCalendarCode) {
+    await exchangeCalendarToken(window._pendingCalendarCode);
+    delete window._pendingCalendarCode;
+  }
 }
 
 async function handleLogout() {
@@ -772,6 +925,15 @@ async function handleLogout() {
 // INIT
 // ─────────────────────────────────────────────
 async function init() {
+  // Handle Google Calendar OAuth callback (code in URL params)
+  const urlParams = new URLSearchParams(window.location.search);
+  const oauthCode = urlParams.get('code');
+  const oauthState = urlParams.get('state');
+  if (oauthCode && oauthState === 'calendar_auth') {
+    history.replaceState({}, '', window.location.pathname);
+    window._pendingCalendarCode = oauthCode;
+  }
+
   // Check existing session
   const { data: { session } } = await db.auth.getSession();
 
@@ -782,6 +944,12 @@ async function init() {
 
   hideLoginScreen(session.user);
   await bootApp();
+
+  // Process pending calendar OAuth code now that user is authenticated
+  if (window._pendingCalendarCode) {
+    await exchangeCalendarToken(window._pendingCalendarCode);
+    delete window._pendingCalendarCode;
+  }
 
   // Listen for session expiry
   db.auth.onAuthStateChange((event) => {
@@ -843,7 +1011,7 @@ function navigate(view) {
   currentView = view;
   document.querySelectorAll('.nav-item[data-view]').forEach(el =>
     el.classList.toggle('active', el.dataset.view === view));
-  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline', email:'Email', settings:'Impostazioni', campaigns:'Campagne Email' };
+  const titles = { dashboard:'Dashboard', contacts:'Contatti', pipeline:'Pipeline', email:'Email', settings:'Impostazioni', campaigns:'Campagne Email', calendario:'Calendario' };
   document.getElementById('pageTitle').textContent = titles[view] || '';
   // Reset content layout for non-email/pipeline views
   const content = document.getElementById('content');
@@ -860,6 +1028,11 @@ function updateTopbar(view) {
   if (!el) return;
   if (view === 'email') {
     el.innerHTML = `<button class="btn btn-secondary" onclick="syncEmails()">🔄 Sincronizza Email</button>`;
+  } else if (view === 'calendario') {
+    el.innerHTML = `<button class="btn btn-secondary" onclick="calPrev()">‹</button>
+      <button class="btn btn-secondary" onclick="calGoToday()">Oggi</button>
+      <button class="btn btn-secondary" onclick="calNext()">›</button>
+      <button class="btn btn-primary" id="calCreateBtn" onclick="openCreateEventModal()">＋ Crea Evento</button>`;
   } else if (view === 'settings' || view === 'campaigns') {
     el.innerHTML = '';
   } else {
@@ -876,6 +1049,7 @@ function renderView() {
   else if (currentView === 'email') renderEmail();
   else if (currentView === 'settings') renderSettings();
   else if (currentView === 'campaigns') renderCampaigns();
+  else if (currentView === 'calendario') renderCalendar();
 }
 
 // ─────────────────────────────────────────────
@@ -1361,11 +1535,23 @@ async function bulkChangeField() {
   if (!valEl) { toast('Inserisci un valore per il campo selezionato', 'err'); return; }
   const value = valEl.value || null;
   const ids = [...selectedContacts];
+
+  // Track contacts whose stage was NOT already "Call fissata" (to trigger popup)
+  const prevNotCallFissata = field === 'stage' && value === 'Call fissata'
+    ? contacts.filter(c => ids.includes(c.id) && c.stage !== 'Call fissata')
+    : [];
+
   const { error } = await db.from('contacts').update({[field]: value}).in('id', ids);
   if (error) { toast('Errore: '+error.message, 'err'); return; }
   ids.forEach(id => { const c=contacts.find(x=>x.id===id); if(c) c[field]=value; });
   toast(`"${field}" aggiornato per ${ids.length} contatti`, 'ok');
   renderContacts();
+
+  // Trigger popup for the first newly-assigned "Call fissata" contact
+  if (prevNotCallFissata.length > 0) {
+    const first = contacts.find(c => c.id === prevNotCallFissata[0].id);
+    if (first) setTimeout(() => openCallFissataPopup(first), 350);
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -1465,6 +1651,9 @@ async function pipeDrop(e, stage) {
   if (ok) {
     toast(`"${contact.nome||contact.cognome}" → ${stage} ✓`, 'ok');
     renderPipeline();
+    if (stage === 'Call fissata') {
+      setTimeout(() => openCallFissataPopup(contact), 350);
+    }
   }
 }
 
@@ -1508,6 +1697,10 @@ async function saveContact() {
   const btn = document.getElementById('saveBtn');
   btn.disabled = true; btn.textContent = '⏳ Salvataggio...';
 
+  // Track previous stage to detect "Call fissata" transition
+  const prevStage = editingId ? (contacts.find(c => c.id === editingId)?.stage || null) : null;
+  const savedEditingId = editingId;
+
   const record = {};
   FIELDS.forEach(f => { const el=document.getElementById('f_'+f); if(el) record[f]=el.value.trim()||null; });
 
@@ -1525,7 +1718,13 @@ async function saveContact() {
   if (error) { toast('Errore: '+error.message, 'err'); return; }
   await loadContacts();
   closeContactModal();
-  toast(editingId ? 'Contatto aggiornato ✓' : 'Contatto aggiunto ✓', 'ok');
+  toast(savedEditingId ? 'Contatto aggiornato ✓' : 'Contatto aggiunto ✓', 'ok');
+
+  // Trigger "Call fissata" popup if stage changed to it
+  if (record.stage === 'Call fissata' && prevStage !== 'Call fissata') {
+    const savedContact = contacts.find(c => c.id === (savedEditingId || record.id));
+    if (savedContact) setTimeout(() => openCallFissataPopup(savedContact), 350);
+  }
 }
 
 // Helper: update contact fields in DB and in local array
@@ -1702,7 +1901,8 @@ async function loadSmtpSettings() {
   if (!error && data) smtpSettings = data;
 }
 
-function renderSettings() {
+async function renderSettings() {
+  await checkCalendarStatus();
   const s = smtpSettings || {};
   document.getElementById('content').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:18px;max-width:580px">
@@ -1781,6 +1981,26 @@ function renderSettings() {
       <div class="settings-footer" style="margin-top:0">
         <button class="btn btn-primary" onclick="saveSmtpSettings()">💾 Salva Impostazioni</button>
         ${s.updated_at ? `<span class="settings-last-save">Ultimo salvataggio: ${new Date(s.updated_at).toLocaleString('it-IT')}</span>` : ''}
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-icon">📅</div>
+        <h3>Google Calendar</h3>
+        <p>Collega il tuo Google Calendar per sincronizzare appuntamenti e creare inviti direttamente dal CRM.</p>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          ${calendarConnected
+            ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--success);font-weight:500">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);display:inline-block"></span>
+                Collegato
+               </span>
+               <button class="btn btn-secondary btn-sm" onclick="disconnectGoogleCalendar()">Disconnetti</button>`
+            : `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:500">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block"></span>
+                Non collegato
+               </span>
+               <button class="btn btn-primary btn-sm" onclick="connectGoogleCalendar()">Collega Google Calendar</button>`
+          }
+        </div>
       </div>
 
     </div>
@@ -2694,6 +2914,441 @@ function startNewCampaign() {
   campaignDraft = {};
   campaignState = { active: false, draft: {}, emailTemplate: '', emailSubject: '', targetContacts: [], sent: 0, total: 0, running: false, startedAt: null, failed: 0 };
   renderCampaigns();
+}
+
+// ─────────────────────────────────────────────
+// GOOGLE CALENDAR
+// ─────────────────────────────────────────────
+
+async function checkCalendarStatus() {
+  try {
+    const { data } = await db.functions.invoke('google-calendar', { body: { action: 'get_status' } });
+    calendarConnected = !!(data && data.connected);
+  } catch { calendarConnected = false; }
+  return calendarConnected;
+}
+
+function connectGoogleCalendar() {
+  if (!GOOGLE_CLIENT_ID || GOOGLE_CLIENT_ID === 'YOUR_GOOGLE_CLIENT_ID') {
+    toast('Configura prima il GOOGLE_CLIENT_ID nelle impostazioni del codice', 'err');
+    return;
+  }
+  const redirectUri = window.location.origin + window.location.pathname;
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'https://www.googleapis.com/auth/calendar',
+    access_type: 'offline',
+    prompt: 'consent',
+    state: 'calendar_auth'
+  });
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
+}
+
+async function exchangeCalendarToken(code) {
+  const redirectUri = window.location.origin + window.location.pathname;
+  try {
+    const { data, error } = await db.functions.invoke('google-calendar', {
+      body: { action: 'exchange_token', code, redirect_uri: redirectUri }
+    });
+    if (error || !data || !data.success) {
+      toast('Errore collegamento Google Calendar', 'err');
+      return;
+    }
+    calendarConnected = true;
+    // Remove any "don't show" preference since calendar is now connected
+    if (currentUser) localStorage.removeItem(`cal_hide_popup_${currentUser.id}`);
+    toast('Google Calendar collegato ✓', 'ok');
+    if (currentView === 'calendario') renderCalendar();
+    if (currentView === 'settings') renderSettings();
+  } catch {
+    toast('Errore collegamento Google Calendar', 'err');
+  }
+}
+
+async function disconnectGoogleCalendar() {
+  if (!confirm('Disconnettere Google Calendar?')) return;
+  await db.functions.invoke('google-calendar', { body: { action: 'disconnect' } });
+  calendarConnected = false;
+  calendarEvents = [];
+  toast('Google Calendar disconnesso', 'ok');
+  if (currentView === 'calendario') renderCalendar();
+  if (currentView === 'settings') renderSettings();
+}
+
+async function loadCalendarEvents() {
+  try {
+    const { data, error } = await db.functions.invoke('google-calendar', { body: { action: 'get_events' } });
+    if (!error && data && data.events) calendarEvents = data.events;
+  } catch { /* silently fail */ }
+}
+
+// ── Calendar rendering ──────────────────────────────────
+
+async function renderCalendar() {
+  const content = document.getElementById('content');
+  content.style.padding = '20px 28px';
+  content.style.overflow = 'auto';
+  content.style.display = '';
+  content.style.flexDirection = '';
+  content.innerHTML = `<div style="display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px"><div class="spinner" style="width:18px;height:18px;border-width:2px"></div> Caricamento calendario...</div>`;
+
+  await checkCalendarStatus();
+  if (calendarConnected) await loadCalendarEvents();
+
+  // Update topbar create button visibility
+  const createBtn = document.getElementById('calCreateBtn');
+  if (createBtn) createBtn.style.display = calendarConnected ? '' : 'none';
+
+  content.innerHTML = buildCalendarPageHTML();
+}
+
+function buildCalendarPageHTML() {
+  const banner = calendarConnected ? '' : `
+    <div class="cal-connect-banner">
+      <div class="cal-connect-banner-icon">📅</div>
+      <div class="cal-connect-banner-text">
+        <strong>Collega Google Calendar</strong>
+        Sincronizza i tuoi appuntamenti e creane di nuovi direttamente dal CRM.
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="connectGoogleCalendar()">Collega</button>
+    </div>`;
+
+  const grid = calView === 'week' ? buildWeekGrid() : buildMonthGrid();
+  return `<div class="cal-wrap">${banner}${grid}</div>`;
+}
+
+function calMonthNames() {
+  return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+}
+
+function buildMonthGrid() {
+  const year = currentCalDate.getFullYear();
+  const month = currentCalDate.getMonth();
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Build the 6-row grid
+  const firstDay = new Date(year, month, 1);
+  let startDow = firstDay.getDay(); // 0=Sun
+  // Convert to Mon-start: Mon=0 … Sun=6
+  startDow = (startDow + 6) % 7;
+
+  const cells = [];
+  for (let i = 0; i < startDow; i++) {
+    const d = new Date(year, month, 1 - startDow + i);
+    cells.push({ date: d, otherMonth: true });
+  }
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  for (let d = 1; d <= daysInMonth; d++) cells.push({ date: new Date(year, month, d), otherMonth: false });
+  while (cells.length % 7 !== 0) {
+    cells.push({ date: new Date(year, month + 1, cells.length - daysInMonth - startDow + 1), otherMonth: true });
+  }
+
+  const weekdays = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+
+  const dayRows = cells.map(cell => {
+    const iso = cell.date.toISOString().slice(0,10);
+    const isToday = cell.date.getTime() === today.getTime();
+    const dayEvents = calendarEvents.filter(ev => ev.start_time && ev.start_time.slice(0,10) === iso);
+    const pills = dayEvents.slice(0,3).map(ev =>
+      `<div class="cal-event-pill" style="background:${ev.color||'#7c5ef0'}" title="${escHtml(ev.title)}">${escHtml(ev.title)}</div>`
+    ).join('');
+    const more = dayEvents.length > 3 ? `<div class="cal-more">+${dayEvents.length-3} altri</div>` : '';
+    return `<div class="cal-day${cell.otherMonth?' other-month':''}" onclick="openCreateEventModal('${iso}')">
+      <div class="cal-day-num${isToday?' today-num':''}">${cell.date.getDate()}</div>
+      ${pills}${more}
+    </div>`;
+  }).join('');
+
+  const rowsHtml = `<div class="cal-days">${dayRows}</div>`;
+
+  return `
+    <div class="cal-grid">
+      <div class="cal-weekdays">${weekdays.map(d=>`<div class="cal-weekday">${d}</div>`).join('')}</div>
+      ${rowsHtml}
+    </div>`;
+}
+
+function buildWeekGrid() {
+  const today = new Date(); today.setHours(0,0,0,0);
+  // Find Monday of current week
+  const dow = (currentCalDate.getDay() + 6) % 7;
+  const monday = new Date(currentCalDate);
+  monday.setDate(currentCalDate.getDate() - dow);
+
+  const days = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    days.push(d);
+  }
+
+  const weekdayNames = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+  const headers = days.map((d, i) => {
+    const isToday = d.getTime() === today.getTime();
+    return `<div class="cal-week-day-header${isToday?' today':''}">
+      ${weekdayNames[i]}<br><strong style="font-size:16px">${d.getDate()}</strong>
+    </div>`;
+  }).join('');
+
+  const hours = Array.from({length:24},(_,h) => h);
+  const timeCol = hours.map(h => `<div class="cal-week-time">${String(h).padStart(2,'0')}:00</div>`).join('');
+
+  const cols = days.map(d => {
+    const iso = d.toISOString().slice(0,10);
+    const dayEvents = calendarEvents.filter(ev => ev.start_time && ev.start_time.slice(0,10) === iso);
+    const evHtml = dayEvents.map(ev => {
+      const startH = ev.start_time ? new Date(ev.start_time).getHours() + new Date(ev.start_time).getMinutes()/60 : 9;
+      const endH = ev.end_time ? new Date(ev.end_time).getHours() + new Date(ev.end_time).getMinutes()/60 : startH + 1;
+      const top = startH * 48;
+      const height = Math.max((endH - startH) * 48 - 2, 20);
+      return `<div class="cal-week-event" style="top:${top}px;height:${height}px;background:${ev.color||'#7c5ef0'}" title="${escHtml(ev.title)}">${escHtml(ev.title)}</div>`;
+    }).join('');
+    const hourLines = hours.map(() => `<div class="cal-week-hour-line"></div>`).join('');
+    return `<div class="cal-week-col">${hourLines}${evHtml}</div>`;
+  }).join('');
+
+  return `
+    <div class="cal-week-wrap">
+      <div class="cal-week-header">
+        <div style="border-right:1px solid var(--border)"></div>
+        ${headers}
+      </div>
+      <div class="cal-week-body">
+        <div class="cal-week-times">${timeCol}</div>
+        <div class="cal-week-cols">${cols}</div>
+      </div>
+    </div>`;
+}
+
+function calPrev() {
+  if (calView === 'month') currentCalDate = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth() - 1, 1);
+  else currentCalDate = new Date(currentCalDate.getTime() - 7 * 86400000);
+  renderCalendar();
+}
+
+function calNext() {
+  if (calView === 'month') currentCalDate = new Date(currentCalDate.getFullYear(), currentCalDate.getMonth() + 1, 1);
+  else currentCalDate = new Date(currentCalDate.getTime() + 7 * 86400000);
+  renderCalendar();
+}
+
+function calGoToday() {
+  currentCalDate = new Date();
+  renderCalendar();
+}
+
+function calSwitchView(view) {
+  calView = view;
+  renderCalendar();
+}
+
+// ── Calendar event modal ──────────────────────────────────
+
+function selectCalColor(el) {
+  document.querySelectorAll('.cal-color-swatch').forEach(s => s.classList.remove('selected'));
+  el.classList.add('selected');
+  calSelectedColor = el.dataset.color;
+}
+
+function openCreateEventModal(dateStr) {
+  const today = dateStr || new Date().toISOString().slice(0,10);
+  document.getElementById('cal_title').value = '';
+  document.getElementById('cal_start_date').value = today;
+  document.getElementById('cal_start_time').value = '09:00';
+  document.getElementById('cal_end_date').value = today;
+  document.getElementById('cal_end_time').value = '10:00';
+  document.getElementById('cal_guests').value = '';
+  document.getElementById('cal_notes').value = '';
+  calSelectedColor = '#7c5ef0';
+  document.querySelectorAll('.cal-color-swatch').forEach(s => {
+    s.classList.toggle('selected', s.dataset.color === calSelectedColor);
+  });
+  document.getElementById('calEventModal').classList.remove('hidden');
+}
+
+function openCreateEventModalPrefilled(opts) {
+  // opts: { title, dateStr, guests, notes }
+  const today = opts.dateStr || new Date().toISOString().slice(0,10);
+  document.getElementById('cal_title').value = opts.title || '';
+  document.getElementById('cal_start_date').value = today;
+  document.getElementById('cal_start_time').value = '09:00';
+  document.getElementById('cal_end_date').value = today;
+  document.getElementById('cal_end_time').value = '10:00';
+  document.getElementById('cal_guests').value = opts.guests || '';
+  document.getElementById('cal_notes').value = opts.notes || '';
+  calSelectedColor = '#a88bf5';
+  document.querySelectorAll('.cal-color-swatch').forEach(s => {
+    s.classList.toggle('selected', s.dataset.color === '#7c5ef0');
+  });
+  document.getElementById('calEventModal').classList.remove('hidden');
+}
+
+function closeCalEventModal() {
+  document.getElementById('calEventModal').classList.add('hidden');
+}
+
+async function saveCalendarEvent() {
+  const title = document.getElementById('cal_title').value.trim();
+  if (!title) { toast('Inserisci un titolo per l\'evento', 'err'); return; }
+
+  const startDate = document.getElementById('cal_start_date').value;
+  const startTime = document.getElementById('cal_start_time').value || '09:00';
+  const endDate = document.getElementById('cal_end_date').value || startDate;
+  const endTime = document.getElementById('cal_end_time').value || '10:00';
+
+  if (!startDate) { toast('Inserisci la data di inizio', 'err'); return; }
+
+  const start_time = `${startDate}T${startTime}:00`;
+  const end_time = `${endDate}T${endTime}:00`;
+
+  const guestsRaw = document.getElementById('cal_guests').value;
+  const guests = guestsRaw.split(/[\n,;]+/).map(e => e.trim()).filter(e => e.includes('@'));
+  const notes = document.getElementById('cal_notes').value.trim() || null;
+
+  const saveBtn = document.querySelector('#calEventModal .modal-footer .btn-primary');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Creazione...'; }
+
+  const { data, error } = await db.functions.invoke('google-calendar', {
+    body: { action: 'create_event', title, start_time, end_time, guests, color: calSelectedColor, notes }
+  });
+
+  if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '📅 Crea Evento'; }
+
+  if (error || (data && data.error)) {
+    toast('Errore creazione evento: ' + (data?.error || error?.message || 'sconosciuto'), 'err');
+    return;
+  }
+
+  const syncedMsg = data?.synced_to_google ? ' (sincronizzato su Google Calendar ✓)' : '';
+  toast(`Evento creato${syncedMsg}`, 'ok');
+  closeCalEventModal();
+  if (currentView === 'calendario') {
+    await loadCalendarEvents();
+    renderCalendar();
+  }
+}
+
+// ── Call fissata popup ──────────────────────────────────
+
+function openCallFissataPopup(contact) {
+  if (!calendarConnected) {
+    if (currentUser) {
+      const hideKey = `cal_hide_popup_${currentUser.id}`;
+      if (localStorage.getItem(hideKey) === '1') return;
+    }
+    showCallFissataPopupDisconnected(contact);
+    return;
+  }
+  showCallFissataPopupConnected(contact);
+}
+
+function showCallFissataPopupDisconnected(contact) {
+  const hideKey = currentUser ? `cal_hide_popup_${currentUser.id}` : null;
+  const name = [contact.nome, contact.cognome].filter(Boolean).join(' ') || contact.email || 'questo contatto';
+  document.getElementById('callFissataPopupInner').innerHTML = `
+    <div class="cf-popup-header">
+      <div>
+        <div class="cf-popup-title">📅 Call fissata con ${escHtml(name)}</div>
+        <div class="cf-popup-sub">Collega Google Calendar per schedulare automaticamente</div>
+      </div>
+      <button class="cf-popup-close" onclick="closeCallFissataPopup()">✕</button>
+    </div>
+    <div class="cf-not-connected">
+      <div class="cf-not-connected-icon">🔗</div>
+      <div class="cf-not-connected-title">Google Calendar non collegato</div>
+      <div class="cf-not-connected-sub">Collega il tuo Google Calendar per creare inviti automaticamente e sincronizzare tutti i tuoi appuntamenti.</div>
+      <button class="btn btn-primary" onclick="connectGoogleCalendar()" style="margin:0 auto">Collega Google Calendar</button>
+    </div>
+    <div class="cf-popup-footer">
+      ${hideKey ? `<label class="cf-no-show"><input type="checkbox" onchange="if(this.checked)localStorage.setItem('${hideKey}','1')"> Non mostrare più (finché Calendar non è collegato)</label>` : ''}
+      <button class="btn btn-secondary" onclick="closeCallFissataPopup()">Chiudi</button>
+    </div>`;
+  document.getElementById('callFissataPopup').classList.remove('hidden');
+}
+
+function showCallFissataPopupConnected(contact) {
+  const name = [contact.nome, contact.cognome].filter(Boolean).join(' ') || contact.email || 'Contatto';
+  const email = contact.email || '';
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('callFissataPopupInner').innerHTML = `
+    <div class="cf-popup-header">
+      <div>
+        <div class="cf-popup-title">📅 Schedula call con ${escHtml(name)}</div>
+        <div class="cf-popup-sub">Crea un evento su Google Calendar per questa call</div>
+      </div>
+      <button class="cf-popup-close" onclick="closeCallFissataPopup()">✕</button>
+    </div>
+    <div class="cf-popup-body">
+      <div class="form-group">
+        <label>Titolo evento</label>
+        <input id="cfp_title" type="text" value="Call con ${escHtml(name)}">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div class="form-group">
+          <label>Data</label>
+          <input id="cfp_date" type="date" value="${today}">
+        </div>
+        <div class="form-group">
+          <label>Ora inizio</label>
+          <input id="cfp_start_time" type="time" value="09:00">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Ora fine</label>
+        <input id="cfp_end_time" type="time" value="10:00">
+      </div>
+      <div class="form-group">
+        <label>Ospiti</label>
+        <textarea id="cfp_guests" rows="2" style="resize:vertical">${escHtml(email)}</textarea>
+      </div>
+      <div class="form-group">
+        <label>Note</label>
+        <textarea id="cfp_notes" rows="2" style="resize:vertical"></textarea>
+      </div>
+    </div>
+    <div class="cf-popup-footer">
+      <button class="btn btn-secondary" onclick="closeCallFissataPopup()">Chiudi senza schedulare</button>
+      <button class="btn btn-primary" onclick="scheduleCallFissata()">📅 Schedula Call</button>
+    </div>`;
+  document.getElementById('callFissataPopup').classList.remove('hidden');
+}
+
+function closeCallFissataPopup() {
+  document.getElementById('callFissataPopup').classList.add('hidden');
+}
+
+async function scheduleCallFissata() {
+  const title = document.getElementById('cfp_title')?.value.trim();
+  const date  = document.getElementById('cfp_date')?.value;
+  const startT = document.getElementById('cfp_start_time')?.value || '09:00';
+  const endT   = document.getElementById('cfp_end_time')?.value || '10:00';
+  const guestsRaw = document.getElementById('cfp_guests')?.value || '';
+  const notes = document.getElementById('cfp_notes')?.value.trim() || null;
+
+  if (!title || !date) { toast('Inserisci titolo e data', 'err'); return; }
+
+  const guests = guestsRaw.split(/[\n,;]+/).map(e => e.trim()).filter(e => e.includes('@'));
+  const start_time = `${date}T${startT}:00`;
+  const end_time = `${date}T${endT}:00`;
+
+  const btn = document.querySelector('#callFissataPopupInner .btn-primary');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳...'; }
+
+  const { data, error } = await db.functions.invoke('google-calendar', {
+    body: { action: 'create_event', title, start_time, end_time, guests, color: '#a88bf5', notes }
+  });
+
+  if (btn) { btn.disabled = false; btn.textContent = '📅 Schedula Call'; }
+
+  if (error || (data && data.error)) {
+    toast('Errore: ' + (data?.error || error?.message), 'err');
+    return;
+  }
+
+  toast('Call schedulata su Google Calendar ✓', 'ok');
+  closeCallFissataPopup();
 }
 
 // BOOT
