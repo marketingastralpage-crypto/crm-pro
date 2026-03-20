@@ -2954,7 +2954,14 @@ async function exchangeCalendarToken(code) {
     });
     if (error) {
       console.error('[Calendar] Supabase function error:', error);
-      toast('Errore collegamento Google Calendar: ' + (error.message || JSON.stringify(error)), 'err');
+      console.error('[Calendar] error.context:', error.context);
+      // Try to extract the real error body from the response
+      let detail = error.message;
+      try {
+        const body = await error.context?.json?.();
+        if (body) { console.error('[Calendar] error body:', body); detail = body.error || body.message || detail; }
+      } catch {}
+      toast('Errore collegamento Google Calendar: ' + detail, 'err');
       return;
     }
     if (!data || !data.success) {
