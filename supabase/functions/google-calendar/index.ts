@@ -18,6 +18,13 @@ function getEnv(key: string): string {
   return val;
 }
 
+// Decode base64url (JWT uses base64url, not standard base64)
+function decodeBase64Url(str: string): string {
+  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  const padded = b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '=');
+  return atob(padded);
+}
+
 async function getValidAccessToken(userId: string, supabase: ReturnType<typeof createClient>): Promise<string> {
   const { data: token, error } = await supabase
     .from('google_calendar_tokens')
@@ -28,7 +35,8 @@ async function getValidAccessToken(userId: string, supabase: ReturnType<typeof c
   if (error || !token) throw new Error('NOT_CONNECTED');
 
   // Still valid (with 60s buffer)
-  if (Date.now() < (token.expires_at - 60_000)) return token.access_token;
+  const expiresAt = Number(token.expires_at);
+  if (Date.now() < (expiresAt - 60_000)) return token.access_token;
 
   // Refresh
   const res = await fetch(GOOGLE_TOKEN_URL, {
@@ -43,7 +51,9 @@ async function getValidAccessToken(userId: string, supabase: ReturnType<typeof c
   });
 
   const refreshed = await res.json();
-  if (!res.ok || !refreshed.access_token) throw new Error('REFRESH_FAILED');
+  if (!res.ok || !refreshed.access_token) {
+    throw new Error(`REFRESH_FAILED: ${JSON.stringify(refreshed)}`);
+  }
 
   await supabase.from('google_calendar_tokens').update({
     access_token: refreshed.access_token,
@@ -75,13 +85,15 @@ async function handleExchangeToken(body: Record<string, string>, userId: string,
   const tokens = await res.json();
   if (!res.ok || !tokens.access_token) return { error: tokens.error_description || 'Token exchange failed' };
 
-  await supabase.from('google_calendar_tokens').upsert({
+  const { error: upsertError } = await supabase.from('google_calendar_tokens').upsert({
     user_id: userId,
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
     expires_at: Date.now() + tokens.expires_in * 1000,
     updated_at: new Date().toISOString(),
   }, { onConflict: 'user_id' });
+
+  if (upsertError) return { error: `DB error: ${upsertError.message}` };
 
   return { success: true };
 }
@@ -96,55 +108,59 @@ async function handleGetStatus(userId: string, supabase: ReturnType<typeof creat
 }
 
 async function handleGetEvents(userId: string, supabase: ReturnType<typeof createClient>) {
-  let accessToken: string;
-  try {
-    accessToken = await getValidAccessToken(userId, supabase);
-  } catch {
-    return { connected: false, events: [] };
-  }
-
   const timeMin = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
   const timeMax = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString();
 
-  const res = await fetch(
-    `${GOOGLE_CALENDAR_BASE}/calendars/primary/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=250`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  );
-
-  if (!res.ok) return { connected: true, events: [] };
-  const gcal = await res.json();
-
-  const events = (gcal.items || []).map((item: Record<string, unknown>) => {
-    const start = item.start as Record<string, string> | undefined;
-    const end = item.end as Record<string, string> | undefined;
-    return {
-      google_event_id: item.id,
-      title: item.summary || '(senza titolo)',
-      start_time: start?.dateTime || start?.date,
-      end_time: end?.dateTime || end?.date,
-      color: (item.colorId as string) || null,
-      notes: item.description || null,
-      guests: ((item.attendees as Array<{email: string}>) || []).map((a) => a.email),
-    };
-  });
-
-  // Upsert into local cache
-  if (events.length > 0) {
-    await supabase.from('calendar_events').upsert(
-      events.map((e: Record<string, unknown>) => ({ ...e, user_id: userId })),
-      { onConflict: 'google_event_id' }
-    );
-  }
-
-  // Also load any local-only events (not from Google)
+  // Always load local-only events (created in app, not synced to Google)
   const { data: localEvents } = await supabase
     .from('calendar_events')
     .select('*')
     .eq('user_id', userId)
+    .is('google_event_id', null)
     .gte('start_time', timeMin)
     .lte('start_time', timeMax);
 
-  return { connected: true, events: localEvents || events };
+  // Try to fetch Google Calendar events
+  let accessToken: string;
+  try {
+    accessToken = await getValidAccessToken(userId, supabase);
+  } catch {
+    // Not connected or token invalid — return only local events
+    return { connected: false, events: localEvents || [] };
+  }
+
+  const res = await fetch(
+    `${GOOGLE_CALENDAR_BASE}/calendars/primary/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}&singleEvents=true&orderBy=startTime&maxResults=250`,
+    { headers: { Authorization: `Bearer ${accessToken}` } }
+  );
+
+  if (!res.ok) {
+    // Google API failed — still return local events
+    const errBody = await res.text();
+    console.error(`Google Calendar get_events failed: ${res.status} ${errBody}`);
+    return { connected: true, events: localEvents || [], google_error: `${res.status}: ${errBody}` };
+  }
+
+  const gcal = await res.json();
+
+  const googleEvents = (gcal.items || []).map((item: Record<string, unknown>) => {
+    const start = item.start as Record<string, string> | undefined;
+    const end = item.end as Record<string, string> | undefined;
+    return {
+      id: item.id, // use google event id as the local id for display
+      google_event_id: item.id,
+      title: item.summary || '(senza titolo)',
+      start_time: start?.dateTime || start?.date,
+      end_time: end?.dateTime || end?.date,
+      color: null, // colorId is a number, not hex — ignore for display
+      notes: item.description || null,
+      guests: ((item.attendees as Array<{ email: string }>) || []).map((a) => a.email),
+    };
+  });
+
+  // Merge: Google events + local-only events
+  const allEvents = [...googleEvents, ...(localEvents || [])];
+  return { connected: true, events: allEvents };
 }
 
 async function handleCreateEvent(body: Record<string, unknown>, userId: string, supabase: ReturnType<typeof createClient>) {
@@ -161,21 +177,23 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
   if (!title || !start_time) return { error: 'Missing title or start_time' };
 
   let googleEventId: string | null = null;
+  let googleError: string | null = null;
 
   // Try to create in Google Calendar if connected
   try {
     const accessToken = await getValidAccessToken(userId, supabase);
 
+    const endDT = end_time || new Date(new Date(start_time).getTime() + 3600000).toISOString();
+
     const gcalEvent: Record<string, unknown> = {
       summary: title,
       start: { dateTime: start_time, timeZone: 'Europe/Rome' },
-      end: { dateTime: end_time || new Date(new Date(start_time).getTime() + 3600000).toISOString(), timeZone: 'Europe/Rome' },
+      end: { dateTime: endDT, timeZone: 'Europe/Rome' },
     };
     if (notes) gcalEvent.description = notes;
     if (guests && guests.length > 0) {
       gcalEvent.attendees = guests.map((email: string) => ({ email }));
     }
-    if (color) gcalEvent.colorId = color;
 
     const res = await fetch(`${GOOGLE_CALENDAR_BASE}/calendars/primary/events`, {
       method: 'POST',
@@ -189,9 +207,14 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
     if (res.ok) {
       const created = await res.json();
       googleEventId = created.id;
+    } else {
+      const errBody = await res.text();
+      googleError = `Google API ${res.status}: ${errBody}`;
+      console.error('Google Calendar create_event failed:', googleError);
     }
-  } catch {
-    // Not connected — save locally only
+  } catch (e) {
+    googleError = e instanceof Error ? e.message : String(e);
+    console.error('Google Calendar create_event exception:', googleError);
   }
 
   // Save to local DB
@@ -207,12 +230,17 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
     contact_id: contact_id || null,
   }).select().single();
 
-  if (error) return { error: error.message };
-  return { success: true, event: data, synced_to_google: !!googleEventId };
+  if (error) return { error: `DB insert failed: ${error.message}` };
+
+  return {
+    success: true,
+    event: data,
+    synced_to_google: !!googleEventId,
+    google_error: googleError, // exposed for debugging — null when sync succeeded
+  };
 }
 
 async function handleDisconnect(userId: string, supabase: ReturnType<typeof createClient>) {
-  // Revoke token at Google
   try {
     const { data: token } = await supabase
       .from('google_calendar_tokens')
@@ -239,10 +267,9 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization') || '';
     const jwt = authHeader.replace('Bearer ', '');
 
-    // JWT is already verified by the gateway — just decode the payload to get the user id
     let userId: string;
     try {
-      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      const payload = JSON.parse(decodeBase64Url(jwt.split('.')[1]));
       if (!payload?.sub) throw new Error('no sub');
       userId = payload.sub;
     } catch {
@@ -287,6 +314,7 @@ serve(async (req) => {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Internal error';
+    console.error('Edge function unhandled error:', message);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

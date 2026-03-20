@@ -3033,6 +3033,10 @@ function buildCalendarPageHTML() {
   return `<div class="cal-wrap">${banner}${grid}</div>`;
 }
 
+function localDateISO(date) {
+  return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+}
+
 function calMonthNames() {
   return ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 }
@@ -3062,9 +3066,9 @@ function buildMonthGrid() {
   const weekdays = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
 
   const dayRows = cells.map(cell => {
-    const iso = cell.date.toISOString().slice(0,10);
+    const iso = localDateISO(cell.date);
     const isToday = cell.date.getTime() === today.getTime();
-    const dayEvents = calendarEvents.filter(ev => ev.start_time && ev.start_time.slice(0,10) === iso);
+    const dayEvents = calendarEvents.filter(ev => ev.start_time && localDateISO(new Date(ev.start_time)) === iso);
     const pills = dayEvents.slice(0,3).map(ev =>
       `<div class="cal-event-pill" style="background:${ev.color||'#7c5ef0'}" title="${escHtml(ev.title)}">${escHtml(ev.title)}</div>`
     ).join('');
@@ -3110,8 +3114,8 @@ function buildWeekGrid() {
   const timeCol = hours.map(h => `<div class="cal-week-time">${String(h).padStart(2,'0')}:00</div>`).join('');
 
   const cols = days.map(d => {
-    const iso = d.toISOString().slice(0,10);
-    const dayEvents = calendarEvents.filter(ev => ev.start_time && ev.start_time.slice(0,10) === iso);
+    const iso = localDateISO(d);
+    const dayEvents = calendarEvents.filter(ev => ev.start_time && localDateISO(new Date(ev.start_time)) === iso);
     const evHtml = dayEvents.map(ev => {
       const startH = ev.start_time ? new Date(ev.start_time).getHours() + new Date(ev.start_time).getMinutes()/60 : 9;
       const endH = ev.end_time ? new Date(ev.end_time).getHours() + new Date(ev.end_time).getMinutes()/60 : startH + 1;
@@ -3235,11 +3239,15 @@ async function saveCalendarEvent() {
     return;
   }
 
-  const syncedMsg = data?.synced_to_google ? ' (sincronizzato su Google Calendar ✓)' : '';
-  toast(`Evento creato${syncedMsg}`, 'ok');
+  if (data?.google_error) {
+    console.warn('[Calendar] Google sync failed:', data.google_error);
+    toast('Evento salvato, errore Google sync: ' + data.google_error.slice(0, 150), 'err');
+  } else {
+    const syncedMsg = data?.synced_to_google ? ' (sincronizzato su Google Calendar ✓)' : '';
+    toast(`Evento creato${syncedMsg}`, 'ok');
+  }
   closeCalEventModal();
   if (currentView === 'calendario') {
-    await loadCalendarEvents();
     renderCalendar();
   }
 }
