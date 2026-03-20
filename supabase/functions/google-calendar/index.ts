@@ -239,19 +239,23 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization') || '';
     const jwt = authHeader.replace('Bearer ', '');
 
-    const supabase = createClient(
-      getEnv('SUPABASE_URL'),
-      getEnv('SUPABASE_SERVICE_ROLE_KEY')
-    );
-
-    // Get authenticated user by passing JWT explicitly (works with legacy JWT secret)
-    const { data: { user }, error: authError } = await supabase.auth.getUser(jwt);
-    if (authError || !user) {
+    // JWT is already verified by the gateway — just decode the payload to get the user id
+    let userId: string;
+    try {
+      const payload = JSON.parse(atob(jwt.split('.')[1]));
+      if (!payload?.sub) throw new Error('no sub');
+      userId = payload.sub;
+    } catch {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
+
+    const supabase = createClient(
+      getEnv('SUPABASE_URL'),
+      getEnv('SUPABASE_SERVICE_ROLE_KEY')
+    );
 
     const body = await req.json();
     const { action, ...params } = body;
@@ -260,19 +264,19 @@ serve(async (req) => {
 
     switch (action) {
       case 'exchange_token':
-        result = await handleExchangeToken(params as Record<string, string>, user.id, supabase);
+        result = await handleExchangeToken(params as Record<string, string>, userId, supabase);
         break;
       case 'get_status':
-        result = await handleGetStatus(user.id, supabase);
+        result = await handleGetStatus(userId, supabase);
         break;
       case 'get_events':
-        result = await handleGetEvents(user.id, supabase);
+        result = await handleGetEvents(userId, supabase);
         break;
       case 'create_event':
-        result = await handleCreateEvent(params as Record<string, unknown>, user.id, supabase);
+        result = await handleCreateEvent(params as Record<string, unknown>, userId, supabase);
         break;
       case 'disconnect':
-        result = await handleDisconnect(user.id, supabase);
+        result = await handleDisconnect(userId, supabase);
         break;
       default:
         result = { error: `Unknown action: ${action}` };
