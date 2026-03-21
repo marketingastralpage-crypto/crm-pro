@@ -155,6 +155,7 @@ async function handleGetEvents(userId: string, supabase: ReturnType<typeof creat
       color: null, // colorId is a number, not hex — ignore for display
       notes: item.description || null,
       guests: ((item.attendees as Array<{ email: string }>) || []).map((a) => a.email),
+      meet_link: (item.hangoutLink as string) || null,
     };
   });
 
@@ -178,24 +179,44 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
 
   let googleEventId: string | null = null;
   let googleError: string | null = null;
+  let meetLink: string | null = null;
+
+  // Detect all-day event (date-only string, no 'T')
+  const isAllDay = !start_time.includes('T');
 
   // Try to create in Google Calendar if connected
   try {
     const accessToken = await getValidAccessToken(userId, supabase);
 
-    const endDT = end_time || new Date(new Date(start_time).getTime() + 3600000).toISOString();
+    let gcalStart: Record<string, string>;
+    let gcalEnd: Record<string, string>;
+
+    if (isAllDay) {
+      gcalStart = { date: start_time };
+      gcalEnd = { date: end_time || start_time };
+    } else {
+      const endDT = end_time || new Date(new Date(start_time).getTime() + 3600000).toISOString();
+      gcalStart = { dateTime: start_time, timeZone: 'Europe/Rome' };
+      gcalEnd = { dateTime: endDT, timeZone: 'Europe/Rome' };
+    }
 
     const gcalEvent: Record<string, unknown> = {
       summary: title,
-      start: { dateTime: start_time, timeZone: 'Europe/Rome' },
-      end: { dateTime: endDT, timeZone: 'Europe/Rome' },
+      start: gcalStart,
+      end: gcalEnd,
+      conferenceData: {
+        createRequest: {
+          requestId: `meet-${Date.now()}`,
+          conferenceSolutionKey: { type: 'hangoutsMeet' },
+        },
+      },
     };
     if (notes) gcalEvent.description = notes;
     if (guests && guests.length > 0) {
       gcalEvent.attendees = guests.map((email: string) => ({ email }));
     }
 
-    const res = await fetch(`${GOOGLE_CALENDAR_BASE}/calendars/primary/events`, {
+    const res = await fetch(`${GOOGLE_CALENDAR_BASE}/calendars/primary/events?conferenceDataVersion=1`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${accessToken}`,
@@ -207,6 +228,7 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
     if (res.ok) {
       const created = await res.json();
       googleEventId = created.id;
+      meetLink = (created.hangoutLink as string) || null;
     } else {
       const errBody = await res.text();
       googleError = `Google API ${res.status}: ${errBody}`;
@@ -228,6 +250,7 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
     color: color || '#7c5ef0',
     notes: notes || null,
     contact_id: contact_id || null,
+    meet_link: meetLink,
   }).select().single();
 
   if (error) return { error: `DB insert failed: ${error.message}` };
@@ -235,6 +258,7 @@ async function handleCreateEvent(body: Record<string, unknown>, userId: string, 
   return {
     success: true,
     event: data,
+    meet_link: meetLink,
     synced_to_google: !!googleEventId,
     google_error: googleError, // exposed for debugging — null when sync succeeded
   };

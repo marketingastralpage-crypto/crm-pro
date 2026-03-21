@@ -543,6 +543,24 @@ textarea { resize: vertical; min-height: 78px; }
 .cal-skeleton-row { display: grid; grid-template-columns: repeat(7,1fr); gap: 1px; flex: 1; }
 .cal-skeleton-cell { background: var(--bg-elevated); animation: shimmer 1.4s infinite; }
 @keyframes shimmer { 0%,100% { opacity: 0.5; } 50% { opacity: 0.8; } }
+/* Google Calendar style datetime row */
+.cal-datetime-row { display: flex; align-items: flex-start; gap: 14px; }
+.cal-dt-icon { font-size: 17px; color: var(--text-sec); margin-top: 7px; flex-shrink: 0; width: 20px; text-align: center; }
+.cal-dt-fields { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+.cal-dt-line { display: flex; align-items: center; gap: 2px; flex-wrap: wrap; }
+.cal-dt-input { background: none; border: none; border-radius: 6px; padding: 5px 8px; font-size: 13.5px; color: var(--text); cursor: pointer; font-family: inherit; transition: background 0.12s; outline: none; }
+.cal-dt-input:hover, .cal-dt-input:focus { background: var(--bg-hover); }
+.cal-dt-input[type=date] { min-width: 130px; }
+.cal-dt-input[type=time] { min-width: 82px; }
+.cal-dt-sep { color: var(--text-sec); font-size: 13px; padding: 0 4px; }
+.cal-allday-row { display: flex; align-items: center; gap: 8px; }
+.cal-allday-label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-sec); cursor: pointer; user-select: none; }
+.cal-allday-label input[type=checkbox] { accent-color: var(--primary); width: 15px; height: 15px; cursor: pointer; }
+/* Meet link */
+.cal-meet-row { display: flex; align-items: center; gap: 14px; }
+.cal-meet-icon { font-size: 17px; width: 20px; text-align: center; flex-shrink: 0; }
+.cal-meet-link { font-size: 13px; color: var(--primary); text-decoration: none; font-weight: 500; }
+.cal-meet-link:hover { text-decoration: underline; }
 </style>
 </head>
 <body>
@@ -771,24 +789,22 @@ textarea { resize: vertical; min-height: 78px; }
         <label>Titolo *</label>
         <input id="cal_title" type="text" placeholder="es. Call con Mario Rossi">
       </div>
-      <div class="cal-row-2">
-        <div class="form-group">
-          <label>Data inizio *</label>
-          <input id="cal_start_date" type="date">
-        </div>
-        <div class="form-group">
-          <label>Ora inizio</label>
-          <input id="cal_start_time" type="time" value="09:00">
-        </div>
-      </div>
-      <div class="cal-row-2">
-        <div class="form-group">
-          <label>Data fine</label>
-          <input id="cal_end_date" type="date">
-        </div>
-        <div class="form-group">
-          <label>Ora fine</label>
-          <input id="cal_end_time" type="time" value="10:00">
+      <div class="cal-datetime-row">
+        <span class="cal-dt-icon">🕐</span>
+        <div class="cal-dt-fields">
+          <div class="cal-dt-line">
+            <input id="cal_start_date" type="date" class="cal-dt-input">
+            <input id="cal_start_time" type="time" value="09:00" class="cal-dt-input">
+            <span class="cal-dt-sep">–</span>
+            <input id="cal_end_date" type="date" class="cal-dt-input">
+            <input id="cal_end_time" type="time" value="10:00" class="cal-dt-input">
+          </div>
+          <div class="cal-allday-row">
+            <label class="cal-allday-label">
+              <input type="checkbox" id="cal_all_day" onchange="toggleCalAllDay(this.checked)">
+              <span>Tutto il giorno</span>
+            </label>
+          </div>
         </div>
       </div>
       <div class="form-group">
@@ -805,6 +821,10 @@ textarea { resize: vertical; min-height: 78px; }
           <div class="cal-color-swatch" style="background:#f59e0b" data-color="#f59e0b" onclick="selectCalColor(this)"></div>
           <div class="cal-color-swatch" style="background:#ec4899" data-color="#ec4899" onclick="selectCalColor(this)"></div>
         </div>
+      </div>
+      <div class="cal-meet-row hidden" id="calMeetRow">
+        <span class="cal-meet-icon">📹</span>
+        <a id="calMeetLink" class="cal-meet-link" href="#" target="_blank" rel="noopener">Partecipa con Google Meet</a>
       </div>
       <div class="form-group">
         <label>Note</label>
@@ -1920,7 +1940,8 @@ function toast(msg,type='ok') {
 let smtpSettings = null;
 
 async function loadSmtpSettings() {
-  const { data, error } = await db.from('smtp_settings').select('*').limit(1).maybeSingle();
+  if (!currentUser) return;
+  const { data, error } = await db.from('smtp_settings').select('*').eq('user_id', currentUser.id).maybeSingle();
   if (!error && data) smtpSettings = data;
 }
 
@@ -2055,10 +2076,10 @@ async function saveSmtpSettings() {
   let error;
 
   if (smtpSettings?.id) {
-    ({ error } = await db.from('smtp_settings').update(payload).eq('id', smtpSettings.id));
+    ({ error } = await db.from('smtp_settings').update(payload).eq('id', smtpSettings.id).eq('user_id', currentUser.id));
     if (!error) smtpSettings = { ...smtpSettings, ...payload };
   } else {
-    const { data, error: err } = await db.from('smtp_settings').insert(payload).select().single();
+    const { data, error: err } = await db.from('smtp_settings').insert({ ...payload, user_id: currentUser.id }).select().single();
     error = err;
     if (!error) smtpSettings = data;
   }
@@ -3361,6 +3382,15 @@ function _setCalColor(color) {
   });
 }
 
+function toggleCalAllDay(checked) {
+  const startTime = document.getElementById('cal_start_time');
+  const endTime = document.getElementById('cal_end_time');
+  const sep = document.querySelector('.cal-dt-sep');
+  startTime.style.display = checked ? 'none' : '';
+  endTime.style.display = checked ? 'none' : '';
+  if (sep) sep.style.display = checked ? 'none' : '';
+}
+
 function openCreateEventModal(dateStr) {
   calEditingEvent = null;
   const today = dateStr || new Date().toISOString().slice(0,10);
@@ -3371,6 +3401,9 @@ function openCreateEventModal(dateStr) {
   document.getElementById('cal_end_time').value = '10:00';
   document.getElementById('cal_guests').value = '';
   document.getElementById('cal_notes').value = '';
+  document.getElementById('cal_all_day').checked = false;
+  toggleCalAllDay(false);
+  document.getElementById('calMeetRow').classList.add('hidden');
   _setCalColor('#7c5ef0');
   _setCalModalMode(false);
   document.getElementById('calEventModal').classList.remove('hidden');
@@ -3387,6 +3420,9 @@ function openCreateEventModalPrefilled(opts) {
   document.getElementById('cal_end_time').value = '10:00';
   document.getElementById('cal_guests').value = opts.guests || '';
   document.getElementById('cal_notes').value = opts.notes || '';
+  document.getElementById('cal_all_day').checked = false;
+  toggleCalAllDay(false);
+  document.getElementById('calMeetRow').classList.add('hidden');
   _setCalColor('#a88bf5');
   _setCalModalMode(false);
   document.getElementById('calEventModal').classList.remove('hidden');
@@ -3400,11 +3436,22 @@ function openEventById(id) {
 function openEventModal(ev) {
   calEditingEvent = ev;
 
-  const startDt = ev.start_time ? new Date(ev.start_time) : new Date();
-  const endDt = ev.end_time ? new Date(ev.end_time) : new Date(startDt.getTime() + 3600000);
-
   const toDateVal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   const toTimeVal = d => `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+
+  // Detect all-day events (date-only ISO string: no 'T')
+  const isAllDay = ev.start_time && !ev.start_time.includes('T');
+  document.getElementById('cal_all_day').checked = isAllDay;
+  toggleCalAllDay(isAllDay);
+
+  let startDt, endDt;
+  if (isAllDay) {
+    startDt = new Date(ev.start_time + 'T00:00:00');
+    endDt = ev.end_time ? new Date(ev.end_time + 'T00:00:00') : startDt;
+  } else {
+    startDt = ev.start_time ? new Date(ev.start_time) : new Date();
+    endDt = ev.end_time ? new Date(ev.end_time) : new Date(startDt.getTime() + 3600000);
+  }
 
   document.getElementById('cal_title').value = ev.title || '';
   document.getElementById('cal_start_date').value = toDateVal(startDt);
@@ -3413,6 +3460,17 @@ function openEventModal(ev) {
   document.getElementById('cal_end_time').value = toTimeVal(endDt);
   document.getElementById('cal_guests').value = (ev.guests || []).join('\n');
   document.getElementById('cal_notes').value = ev.notes || '';
+
+  // Show Google Meet link if available
+  const meetRow = document.getElementById('calMeetRow');
+  const meetLink = document.getElementById('calMeetLink');
+  if (ev.meet_link) {
+    meetLink.href = ev.meet_link;
+    meetRow.classList.remove('hidden');
+  } else {
+    meetRow.classList.add('hidden');
+  }
+
   _setCalColor(ev.color);
   _setCalModalMode(true);
   document.getElementById('calEventModal').classList.remove('hidden');
@@ -3429,12 +3487,14 @@ function _readCalModalFields() {
   const startTime = document.getElementById('cal_start_time').value || '09:00';
   const endDate = document.getElementById('cal_end_date').value || startDate;
   const endTime = document.getElementById('cal_end_time').value || '10:00';
+  const isAllDay = document.getElementById('cal_all_day').checked;
   const guestsRaw = document.getElementById('cal_guests').value;
   const guests = guestsRaw.split(/[\n,;]+/).map(e => e.trim()).filter(e => e.includes('@'));
   const notes = document.getElementById('cal_notes').value.trim() || null;
-  const start_time = `${startDate}T${startTime}:00`;
-  const end_time = `${endDate}T${endTime}:00`;
-  return { title, startDate, start_time, end_time, guests, notes };
+  // All-day events use date-only strings; timed events use ISO datetime
+  const start_time = isAllDay ? startDate : `${startDate}T${startTime}:00`;
+  const end_time = isAllDay ? endDate : `${endDate}T${endTime}:00`;
+  return { title, startDate, start_time, end_time, guests, notes, isAllDay };
 }
 
 async function saveCalendarEvent() {

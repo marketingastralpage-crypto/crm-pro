@@ -15,21 +15,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function decodeBase64Url(s: string): string {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Extract userId from JWT
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace("Bearer ", "");
+    let userId: string;
+    try {
+      const payload = JSON.parse(decodeBase64Url(jwt.split(".")[1]));
+      if (!payload?.sub) throw new Error("no sub");
+      userId = payload.sub;
+    } catch {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supa = createClient(supabaseUrl, serviceKey);
 
-    // Load SMTP settings
+    // Load SMTP settings — filtered by the requesting user
     const { data: cfg, error: cfgErr } = await supa
       .from("smtp_settings")
       .select("*")
-      .limit(1)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (cfgErr || !cfg) throw new Error("Impostazioni SMTP non trovate nel database");
@@ -77,6 +98,7 @@ serve(async (req: Request) => {
       read:        true,
       text_body:   body,
       in_reply_to: inReplyTo || null,
+      user_id:     userId,
     });
 
     return new Response(JSON.stringify({ ok: true }), {

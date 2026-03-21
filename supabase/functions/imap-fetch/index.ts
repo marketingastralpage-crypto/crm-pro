@@ -35,21 +35,42 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+function decodeBase64Url(s: string): string {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
 
   try {
+    // Extract userId from JWT
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace("Bearer ", "");
+    let userId: string;
+    try {
+      const payload = JSON.parse(decodeBase64Url(jwt.split(".")[1]));
+      if (!payload?.sub) throw new Error("no sub");
+      userId = payload.sub;
+    } catch {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supa = createClient(supabaseUrl, serviceKey);
 
-    // Load IMAP/SMTP settings from DB
+    // Load IMAP/SMTP settings from DB — filtered by the requesting user
     const { data: cfg, error: cfgErr } = await supa
       .from("smtp_settings")
       .select("*")
-      .limit(1)
+      .eq("user_id", userId)
       .maybeSingle();
 
     if (cfgErr || !cfg) throw new Error("Impostazioni IMAP non trovate nel database");
@@ -125,18 +146,18 @@ serve(async (req: Request) => {
     if (emails.length > 0) {
       // Upsert email content WITHOUT the read column so we never overwrite
       // a locally-marked-read email back to false. New rows get read=false by default.
-      const emailsToUpsert = emails.map(({ read: _read, ...rest }) => rest);
+      const emailsToUpsert = emails.map(({ read: _read, ...rest }) => ({ ...rest, user_id: userId }));
 
       const { error: upsertErr } = await supa
         .from("emails")
-        .upsert(emailsToUpsert, { onConflict: "message_id", ignoreDuplicates: false });
+        .upsert(emailsToUpsert, { onConflict: "user_id,message_id", ignoreDuplicates: false });
       if (upsertErr) throw new Error("Errore salvataggio email: " + upsertErr.message);
       upserted = emails.length;
 
       // If IMAP reports \\Seen, propagate that to the DB (false→true only, never true→false)
       const seenIds = emails.filter(e => e.read).map(e => e.message_id);
       if (seenIds.length > 0) {
-        await supa.from("emails").update({ read: true }).in("message_id", seenIds);
+        await supa.from("emails").update({ read: true }).eq("user_id", userId).in("message_id", seenIds);
       }
     }
 

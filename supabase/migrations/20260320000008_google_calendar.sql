@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.calendar_events (
   guests          TEXT[],
   color           TEXT DEFAULT '#7c5ef0',
   notes           TEXT,
-  contact_id      TEXT REFERENCES public.contacts(id) ON DELETE SET NULL,
+  contact_id      TEXT,  -- soft reference to contacts(id), no FK constraint
   created_at      TIMESTAMPTZ DEFAULT NOW(),
   updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
