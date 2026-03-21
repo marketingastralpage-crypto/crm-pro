@@ -1028,7 +1028,7 @@ async function loadContacts() {
   const PAGE = 1000;
   let all = [], from = 0;
   while (true) {
-    const { data, error } = await db.from('contacts').select('*').order('created_at', { ascending: false }).range(from, from + PAGE - 1);
+    const { data, error } = await db.from('contacts').select('*').eq('user_id', currentUser.id).order('created_at', { ascending: false }).range(from, from + PAGE - 1);
     if (error) {
       console.error(error);
       document.getElementById('dbDot').classList.add('offline');
@@ -1515,7 +1515,7 @@ async function spChange(el) {
   const id = el.dataset.id;
   const field = el.dataset.field;
   const value = el.value.trim() || null;
-  const { error } = await db.from('contacts').update({[field]: value}).eq('id', id);
+  const { error } = await db.from('contacts').update({[field]: value}).eq('id', id).eq('user_id', currentUser.id);
   if (error) { toast('Errore salvataggio: '+error.message, 'err'); return; }
   const c = contacts.find(x=>x.id===id);
   if (c) c[field] = value;
@@ -1535,7 +1535,7 @@ async function bulkDelete() {
   if (!selectedContacts.size) return;
   if (!confirm(`Eliminare ${selectedContacts.size} contatti selezionati? Questa operazione non può essere annullata.`)) return;
   const ids = [...selectedContacts];
-  const { error } = await db.from('contacts').delete().in('id', ids);
+  const { error } = await db.from('contacts').delete().in('id', ids).eq('user_id', currentUser.id);
   if (error) { toast('Errore eliminazione: '+error.message, 'err'); return; }
   contacts = contacts.filter(c => !ids.includes(c.id));
   selectedContacts.clear();
@@ -1584,7 +1584,7 @@ async function bulkChangeField() {
     ? contacts.filter(c => ids.includes(c.id) && c.stage !== 'Call fissata')
     : [];
 
-  const { error } = await db.from('contacts').update({[field]: value}).in('id', ids);
+  const { error } = await db.from('contacts').update({[field]: value}).in('id', ids).eq('user_id', currentUser.id);
   if (error) { toast('Errore: '+error.message, 'err'); return; }
   ids.forEach(id => { const c=contacts.find(x=>x.id===id); if(c) c[field]=value; });
   toast(`"${field}" aggiornato per ${ids.length} contatti`, 'ok');
@@ -1749,7 +1749,7 @@ async function saveContact() {
 
   let error;
   if (editingId) {
-    ({ error } = await db.from('contacts').update(record).eq('id', editingId));
+    ({ error } = await db.from('contacts').update(record).eq('id', editingId).eq('user_id', currentUser.id));
   } else {
     record.id = uid();
     record.user_id = currentUser.id;
@@ -1772,7 +1772,7 @@ async function saveContact() {
 
 // Helper: update contact fields in DB and in local array
 async function updateContactInDB(id, fields) {
-  const { error } = await db.from('contacts').update(fields).eq('id', id);
+  const { error } = await db.from('contacts').update(fields).eq('id', id).eq('user_id', currentUser.id);
   if (error) { console.error('[updateContact] error:', error.message); return false; }
   const c = contacts.find(x => x.id === id);
   if (c) Object.assign(c, fields);
@@ -1781,7 +1781,7 @@ async function updateContactInDB(id, fields) {
 
 async function deleteContact(id) {
   if (!confirm('Eliminare questo contatto?')) return;
-  const { error } = await db.from('contacts').delete().eq('id', id);
+  const { error } = await db.from('contacts').delete().eq('id', id).eq('user_id', currentUser.id);
   if (error) { toast('Errore: '+error.message, 'err'); return; }
   await loadContacts();
   toast('Contatto eliminato', 'ok');
@@ -2189,6 +2189,7 @@ async function fetchEmails(forceSync = false, silent = false) {
   const { data, error } = await db
     .from('emails')
     .select('id, message_id, thread_id, from_name, from_email, to, subject, date, folder, read, text_body')
+    .eq('user_id', currentUser.id)
     .eq('folder', emailState.folder)
     .order('date', { ascending: false })
     .limit(50);
@@ -2259,7 +2260,7 @@ async function openEmail(id) {
   if (!found.read) {
     found.read = true;
     _renderEmailList();
-    await db.from('emails').update({ read: true }).eq('id', id);
+    await db.from('emails').update({ read: true }).eq('id', id).eq('user_id', currentUser.id);
   } else {
     _renderEmailList();
   }
@@ -2268,7 +2269,7 @@ async function openEmail(id) {
   if (panel) panel.innerHTML = '<div class="loading-wrap" style="height:200px"><div class="spinner"></div></div>';
 
   // Fetch full email (includes html_body)
-  const { data: full } = await db.from('emails').select('*').eq('id', id).single();
+  const { data: full } = await db.from('emails').select('*').eq('id', id).eq('user_id', currentUser.id).single();
   const email = full || found;
 
   // Fetch thread
@@ -2276,6 +2277,7 @@ async function openEmail(id) {
   const { data: thread } = await db
     .from('emails')
     .select('*')
+    .eq('user_id', currentUser.id)
     .or(`thread_id.eq.${threadId},message_id.eq.${threadId}`)
     .order('date', { ascending: true });
 
