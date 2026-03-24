@@ -2044,7 +2044,8 @@ function splitCSV(line) {
 
 function processRows(rows) {
   if(!rows.length){toast('Nessun dato trovato','err');return;}
-  importBatch = rows.map(row=>{const c={id:uid(),user_id:currentUser.id};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
+  const baseTime = Date.now();
+  importBatch = rows.map((row,i)=>{const c={id:uid(),user_id:currentUser.id,created_at:new Date(baseTime+i).toISOString()};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
   const prev=document.getElementById('importPreview');
   prev.classList.remove('hidden');
   prev.innerHTML=`<strong>✅ ${importBatch.length} contatti pronti per l'importazione</strong>
@@ -2070,6 +2071,7 @@ async function confirmImport() {
   }
 
   btn.disabled=false; btn.textContent='✅ Conferma Importazione';
+  sortField = 'created_at'; sortDir = 'asc';
   await loadContacts();
   closeImport();
   navigate('contacts');
