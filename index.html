@@ -1557,7 +1557,11 @@ function getFiltered() {
       return true;
     })
     .sort((a,b) => {
-      let va=a[sortField]||'', vb=b[sortField]||'';
+      let va=a[sortField], vb=b[sortField];
+      if (va==null && vb==null) return 0;
+      if (va==null) return 1;
+      if (vb==null) return -1;
+      va=va||''; vb=vb||'';
       if (!isNaN(parseFloat(va))&&!isNaN(parseFloat(vb))) { va=parseFloat(va)||0; vb=parseFloat(vb)||0; }
       const r = va<vb?-1:va>vb?1:0;
       return sortDir==='asc'?r:-r;
@@ -2044,8 +2048,7 @@ function splitCSV(line) {
 
 function processRows(rows) {
   if(!rows.length){toast('Nessun dato trovato','err');return;}
-  const baseTime = Date.now();
-  importBatch = rows.map((row,i)=>{const c={id:uid(),user_id:currentUser.id,created_at:new Date(baseTime+i).toISOString()};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
+  importBatch = rows.map((row,i)=>{const c={id:uid(),user_id:currentUser.id,import_order:i};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
   const prev=document.getElementById('importPreview');
   prev.classList.remove('hidden');
   prev.innerHTML=`<strong>✅ ${importBatch.length} contatti pronti per l'importazione</strong>
@@ -2071,7 +2074,7 @@ async function confirmImport() {
   }
 
   btn.disabled=false; btn.textContent='✅ Conferma Importazione';
-  sortField = 'created_at'; sortDir = 'asc';
+  sortField = 'import_order'; sortDir = 'asc';
   await loadContacts();
   closeImport();
   navigate('contacts');
