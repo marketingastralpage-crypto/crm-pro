@@ -1569,6 +1569,7 @@ function renderDashboard() {
 // ─────────────────────────────────────────────
 function renderContacts() {
   if (contactsViewMode === 'spreadsheet') { renderContactsSpreadsheet(); return; }
+  const searchHadFocus = document.activeElement && document.activeElement.classList.contains('filter-input');
   const list = getFiltered();
   const totalPages = Math.max(1, Math.ceil(list.length / contactsPageSize));
   if (contactsPage >= totalPages) contactsPage = totalPages - 1;
@@ -1655,6 +1656,10 @@ function renderContacts() {
       <button class="btn btn-secondary btn-sm" onclick="contactsPage++;renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>Succ ›</button>
       <button class="btn btn-secondary btn-sm" onclick="contactsPage=${totalPages-1};renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>»</button>
     </div>` : ''}`;
+  if (searchHadFocus) {
+    const fi = document.querySelector('.filter-input');
+    if (fi) { fi.focus(); fi.setSelectionRange(fText.length, fText.length); }
+  }
 }
 
 function getFiltered() {
