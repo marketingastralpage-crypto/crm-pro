@@ -1615,6 +1615,7 @@ function renderContacts() {
       c.sito      ? `<a class="btn-icon btn-link" href="${c.sito}" target="_blank" onclick="event.stopPropagation()" title="Sito Web">🌐</a>` : '',
       c.email     ? `<a class="btn-icon btn-link" href="mailto:${c.email}" onclick="event.stopPropagation()" title="Email">✉️</a>` : '',
       c.telefono  ? `<a class="btn-icon btn-link" href="tel:${c.telefono}" onclick="event.stopPropagation()" title="Chiama ${c.telefono}">📞</a>` : '',
+      (c.telefono && /^\+39\s*3/.test(c.telefono)) ? `<a class="btn-icon btn-link" href="https://wa.me/${c.telefono.replace(/[^\d]/g,'')}" target="_blank" onclick="event.stopPropagation()" title="WhatsApp ${c.telefono}" style="color:#25D366;font-size:15px">💬</a>` : '',
     ].join('');
     const searchVal = `${c.nome||''} ${c.cognome||''} ${c.azienda||''} ${c.email||''} ${c.ruolo||''}`.toLowerCase().replace(/"/g,'');
     return `<tr onclick="openContactModal('${c.id}')" data-search="${searchVal}">
@@ -1790,7 +1791,8 @@ function renderContactsSpreadsheet() {
       const escaped = val.replace(/"/g,'&quot;');
       if (col.key === 'telefono') {
         const btn = val ? `<a class="btn-icon btn-link" href="tel:${val}" title="Chiama ${val}" style="flex-shrink:0">📞</a>` : '';
-        return `<td><div style="display:flex;align-items:center;gap:4px"><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)">${btn}</div></td>`;
+        const wa = (val && /^\+39\s*3/.test(val)) ? `<a class="btn-icon btn-link" href="https://wa.me/${val.replace(/[^\d]/g,'')}" target="_blank" title="WhatsApp ${val}" style="flex-shrink:0;color:#25D366;font-size:15px">💬</a>` : '';
+        return `<td><div style="display:flex;align-items:center;gap:4px"><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)">${btn}${wa}</div></td>`;
       }
       if (col.key === 'email') {
         const btn = val ? `<a class="btn-icon btn-link" href="mailto:${val}" title="Scrivi a ${val}" style="flex-shrink:0">✉️</a>` : '';
