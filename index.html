@@ -1659,6 +1659,25 @@ function renderContacts() {
         </div>
       </div>
       <div id="contacts-body"></div>`;
+    // Track mouse/touch globally (once only) to distinguish spurious blur from intentional
+    if (!window._mouseIsDown) {
+      window._mouseIsDown = false;
+      document.addEventListener('mousedown',  () => { window._mouseIsDown = true; },  true);
+      document.addEventListener('mouseup',    () => { setTimeout(() => { window._mouseIsDown = false; }, 0); }, true);
+      document.addEventListener('touchstart', () => { window._mouseIsDown = true; },  true);
+      document.addEventListener('touchend',   () => { setTimeout(() => { window._mouseIsDown = false; }, 0); }, true);
+    }
+    // Re-focus filter input on spurious blur (caused by reflow, not by user click)
+    const _fi = document.querySelector('.filter-input');
+    _fi.addEventListener('blur', function() {
+      const self = this;
+      requestAnimationFrame(() => {
+        if (currentView === 'contacts' && !window._mouseIsDown &&
+            (document.activeElement === document.body || !document.activeElement)) {
+          self.focus();
+        }
+      });
+    });
   }
 
   document.getElementById('contacts-body').innerHTML = `
