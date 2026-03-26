@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AstralPage CRM</title>
 <link rel="icon" href="./astralpage_logo.svg" type="image/svg+xml">
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#07070f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="AstralPage CRM">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -2277,6 +2282,81 @@ function toast(msg,type='ok') {
 }
 
 // ─────────────────────────────────────────────
+// WEB PUSH — VAPID public key
+// ─────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BBwi6I6bgyPSxLqSqAi-Qc2BMdMmXwbIQBb5jD96t7ET2BRNd1-b93T_X4qOiDk-F5xjFsXhUT-QytS8OCPYvbM';
+
+function _urlBase64ToUint8Array(b64) {
+  const pad = '='.repeat((4 - b64.length % 4) % 4);
+  const raw = atob((b64 + pad).replace(/-/g, '+').replace(/_/g, '/'));
+  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+}
+
+// Subscribe this device to Web Push and save the endpoint to Supabase
+async function _subscribeToPush() {
+  if (!('PushManager' in window)) return;
+  if (!currentUser) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+    const j = sub.toJSON();
+    // Upsert subscription in DB (endpoint is unique key)
+    await db.from('push_subscriptions').upsert({
+      user_id:  currentUser.id,
+      endpoint: j.endpoint,
+      p256dh:   j.keys.p256dh,
+      auth:     j.keys.auth,
+    }, { onConflict: 'endpoint' });
+  } catch {}
+}
+
+// Unsubscribe this device from push
+async function _unsubscribeFromPush() {
+  if (!('PushManager' in window)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) {
+      await db.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      await sub.unsubscribe();
+    }
+  } catch {}
+}
+
+// Save a scheduled notification to push_queue so the server can deliver it even when the app is closed
+async function _saveToPushQueue(n) {
+  if (!currentUser) return;
+  await db.from('push_queue').upsert({
+    id:      n.id,
+    user_id: currentUser.id,
+    title:   n.title,
+    body:    n.body,
+    fire_at: new Date(n.fireAt).toISOString(),
+    sent:    false,
+  }, { onConflict: 'id', ignoreDuplicates: true });
+}
+
+// Ask the send-push edge function to deliver any overdue push notifications now
+async function _flushPushQueue() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const token = session?.access_token;
+    const base = typeof SUPABASE_URL !== 'undefined' ? SUPABASE_URL : db.supabaseUrl;
+    await fetch(`${base}/functions/v1/send-push`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+      body: '{}',
+    });
+  } catch {}
+}
+
+// ─────────────────────────────────────────────
 // NOTIFICATION SYSTEM
 // ─────────────────────────────────────────────
 let _notifQueue = [];
@@ -2308,16 +2388,23 @@ function _fmtTime(date) {
 
 // ── INIT (called on bootApp) ──────────────────
 async function initNotifications() {
-  // Register service worker for background notifications
+  // Register service worker
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js').catch(() => {});
+    await navigator.serviceWorker.register('./sw.js').catch(() => {});
   }
-  // Request browser notification permission
-  if ('Notification' in window && Notification.permission === 'default') {
-    await Notification.requestPermission();
+  // On desktop/Android: auto-request permission if still default
+  // On iOS Safari we CANNOT ask without a user gesture — the settings card handles that
+  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+  if (!isIOS && 'Notification' in window && Notification.permission === 'default') {
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') await _subscribeToPush();
+  } else if (Notification.permission === 'granted') {
+    await _subscribeToPush();
   }
   await checkAndScheduleNotifications();
   updateNotifBadge();
+  // Deliver any overdue push notifications immediately
+  _flushPushQueue();
 }
 
 // ── CHECK & SCHEDULE ──────────────────────────
@@ -2391,6 +2478,11 @@ async function checkAndScheduleNotifications() {
       }
     }
   } catch (e) { /* contacts unavailable */ }
+
+  // ── Save new notifications to push_queue for server-side delivery ──
+  for (const n of newNotifs) {
+    _saveToPushQueue(n); // fire-and-forget
+  }
 
   // ── Merge, clean (keep 7 days), save ──
   const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
@@ -2582,6 +2674,51 @@ async function loadSmtpSettings() {
 async function renderSettings() {
   await checkCalendarStatus();
   const s = smtpSettings || {};
+
+  // Determine current push state for the settings card
+  const notifSupported = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
+  const notifPerm = notifSupported ? Notification.permission : 'unsupported';
+  let pushSubscribed = false;
+  if (notifPerm === 'granted' && notifSupported) {
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      pushSubscribed = !!(await reg.pushManager.getSubscription());
+    } catch {}
+  }
+  const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
+  const isInStandaloneIOS = isIOS && window.matchMedia('(display-mode: standalone)').matches;
+
+  // Build the notification card HTML
+  let notifCardBody = '';
+  if (!notifSupported) {
+    notifCardBody = `<p style="color:var(--muted);font-size:13px;margin-top:10px">Il tuo browser non supporta le notifiche push.</p>`;
+  } else if (isIOS && !isInStandaloneIOS) {
+    notifCardBody = `
+      <div style="margin-top:12px;padding:12px;border-radius:10px;background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.2)">
+        <p style="font-size:13px;color:var(--text-sec);margin:0 0 8px 0">Su iPhone/iPad devi prima aggiungere l'app alla Home Screen per ricevere notifiche push.</p>
+        <p style="font-size:12px;color:var(--muted);margin:0">Tocca <strong style="color:var(--text)">Condividi</strong> → <strong style="color:var(--text)">Aggiungi a Home</strong>, poi riapri l'app dall'icona sulla home.</p>
+      </div>`;
+  } else if (notifPerm === 'denied') {
+    notifCardBody = `
+      <div style="margin-top:12px;padding:12px;border-radius:10px;background:rgba(255,80,80,0.08);border:1px solid rgba(255,80,80,0.2)">
+        <p style="font-size:13px;color:var(--text-sec);margin:0 0 8px 0">Le notifiche sono bloccate nelle impostazioni del browser.</p>
+        <p style="font-size:12px;color:var(--muted);margin:0">Apri le impostazioni del browser, cerca questo sito e abilita le Notifiche.</p>
+      </div>`;
+  } else if (notifPerm === 'granted' && pushSubscribed) {
+    notifCardBody = `
+      <div style="margin-top:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--success);font-weight:500">
+          <span style="width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);display:inline-block"></span>
+          Notifiche attive su questo dispositivo
+        </span>
+        <button class="btn btn-secondary btn-sm" onclick="disableNotifications()">Disattiva</button>
+      </div>`;
+  } else {
+    notifCardBody = `
+      <div style="margin-top:12px">
+        <button class="btn btn-primary btn-sm" onclick="enableNotifications()">Attiva notifiche su questo dispositivo</button>
+      </div>`;
+  }
   document.getElementById('content').innerHTML = `
     <div style="display:flex;flex-direction:column;gap:18px;max-width:580px">
 
@@ -2662,6 +2799,13 @@ async function renderSettings() {
       </div>
 
       <div class="settings-card">
+        <div class="settings-card-icon">🔔</div>
+        <h3>Notifiche Push</h3>
+        <p>Ricevi notifiche su questo dispositivo per eventi del calendario e azioni in scadenza, anche quando l'app è chiusa.</p>
+        ${notifCardBody}
+      </div>
+
+      <div class="settings-card">
         <div class="settings-card-icon">📅</div>
         <h3>Google Calendar</h3>
         <p>Collega il tuo Google Calendar per sincronizzare appuntamenti e creare inviti direttamente dal CRM.</p>
@@ -2683,6 +2827,24 @@ async function renderSettings() {
 
     </div>
   `;
+}
+
+async function enableNotifications() {
+  if (!('Notification' in window)) return;
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    await _subscribeToPush();
+    toast('Notifiche attivate ✓', 'ok');
+  } else {
+    toast('Permesso notifiche negato', 'err');
+  }
+  renderSettings();
+}
+
+async function disableNotifications() {
+  await _unsubscribeFromPush();
+  toast('Notifiche disattivate', 'ok');
+  renderSettings();
 }
 
 function toggleSmtpPwd() {
