@@ -180,21 +180,29 @@ textarea { resize: vertical; min-height: 78px; }
 .ps-label { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; margin-bottom: 4px; }
 .ps-value { font-size: 20px; font-weight: 700; color: var(--text); letter-spacing: -0.03em; }
 .ps-value.money { color: var(--success); }
-.pipeline-wrap { display: grid; grid-template-columns: repeat(8, minmax(140px, 1fr)); gap: 10px; flex: 1; min-height: 0; overflow-x: auto; padding-bottom: 4px; }
+.pipeline-wrap { display: grid; grid-template-columns: repeat(8, minmax(170px, 1fr)); gap: 10px; flex: 1; min-height: 0; overflow-x: auto; padding-bottom: 8px; }
 .pipe-col { background: var(--bg-surface); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: hidden; display: flex; flex-direction: column; min-height: 0; transition: border-color .15s, box-shadow .15s, background .15s; }
 .pipe-col.drag-over { border-color: var(--primary) !important; background: rgba(124,94,240,0.06); box-shadow: 0 0 0 2px var(--primary-glow); }
 .pipe-header { padding: 10px 12px; font-weight: 600; font-size: 11.5px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
 .pipe-count { border-radius: 20px; padding: 2px 7px; font-size: 10px; font-weight: 700; }
 .pipe-total { padding: 4px 12px; font-size: 11px; font-weight: 600; color: var(--success); background: rgba(34,197,94,0.07); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.pipe-cards { padding: 7px; flex: 1; overflow-y: auto; min-height: 60px; }
-.pipe-card { background: var(--bg-elevated); border-radius: var(--radius-sm); padding: 9px 11px; margin-bottom: 6px; border: 1px solid var(--border); cursor: grab; transition: var(--transition); user-select: none; position: relative; }
-.pipe-card:hover { border-color: var(--primary); background: rgba(124,94,240,0.07); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+.pipe-cards { padding: 8px; flex: 1; overflow-y: auto; min-height: 60px; display: flex; flex-direction: column; gap: 6px; }
+.pipe-card { background: var(--bg-elevated); border-radius: var(--radius-md); padding: 10px 11px; border: 1px solid var(--border); cursor: grab; transition: var(--transition); user-select: none; position: relative; }
+.pipe-card:hover { border-color: var(--primary); background: rgba(124,94,240,0.06); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
 .pipe-card.dragging { opacity: 0.35; cursor: grabbing; transform: scale(0.96); }
-.pipe-card-name { font-weight: 600; font-size: 12px; margin-bottom: 1px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pipe-card-co { font-size: 11px; color: var(--text-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pipe-card-val { font-size: 11px; color: var(--success); font-weight: 600; margin-top: 4px; }
-.pipe-card-action { font-size: 10.5px; color: var(--primary-text); margin-top: 3px; opacity: 0.85; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pipe-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 18px 8px; border: 1px dashed rgba(255,255,255,0.07); border-radius: var(--radius-sm); margin: 4px 0; }
+.pipe-card-top { display: flex; align-items: flex-start; gap: 7px; }
+.pipe-card-av { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; color: #fff; flex-shrink: 0; margin-top: 1px; }
+.pipe-card-name { font-weight: 600; font-size: 12.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
+.pipe-card-co { font-size: 10.5px; color: var(--text-sec); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 1px; }
+.pipe-card-row { display: flex; align-items: center; justify-content: space-between; margin-top: 7px; padding-top: 6px; border-top: 1px solid var(--border); }
+.pipe-card-val { font-size: 11px; color: var(--success); font-weight: 700; }
+.pipe-card-date { font-size: 10px; color: var(--muted); }
+.pipe-card-action { font-size: 10.5px; color: var(--primary-text); margin-top: 5px; background: rgba(124,94,240,0.1); border: 1px solid rgba(124,94,240,0.15); border-radius: 4px; padding: 3px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+.pipe-empty { font-size: 12px; color: var(--muted); text-align: center; padding: 18px 8px; border: 1px dashed rgba(255,255,255,0.07); border-radius: var(--radius-sm); }
+
+/* ── DASHBOARD GRIDS ── */
+.dash-main-grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 16px; margin-bottom: 16px; }
+.dash-eco-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; }
 
 /* ── IMPORT ── */
 .guide-box { background: rgba(124,94,240,0.06); border: 1px solid rgba(124,94,240,0.2); border-radius: var(--radius-md); padding: 18px; margin-bottom: 16px; }
@@ -783,6 +791,13 @@ textarea { resize: vertical; min-height: 78px; }
 
   /* cal row 2 (event modal) */
   .cal-row-2 { grid-template-columns: 1fr; }
+
+  /* Dashboard responsive grids */
+  .dash-main-grid { grid-template-columns: 1fr; }
+  .dash-eco-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* Pipeline: wider columns for horizontal scroll on mobile */
+  .pipeline-wrap { grid-template-columns: repeat(8, 210px); }
 }
 
 /* ── VERY SMALL ≤ 480px ── */
@@ -797,6 +812,7 @@ textarea { resize: vertical; min-height: 78px; }
   .modal { max-height: 98vh; }
   .cal-month-label { min-width: 100px; font-size: 13px; }
   .cal-view-btn { padding: 4px 7px; font-size: 11px; }
+  .dash-eco-grid { grid-template-columns: 1fr; }
 }
 </style>
 </head>
@@ -1484,7 +1500,7 @@ function renderDashboard() {
       </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:1.1fr 0.9fr;gap:16px;margin-bottom:16px">
+    <div class="dash-main-grid">
       <!-- Stage Distribution -->
       <div class="table-card" style="padding:20px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
@@ -1526,7 +1542,7 @@ function renderDashboard() {
     <!-- Economic Summary -->
     <div class="table-card" style="padding:20px;margin-bottom:16px">
       <div style="font-weight:700;margin-bottom:16px;font-size:14px">💰 Riepilogo Economico</div>
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+      <div class="dash-eco-grid">
         <div style="padding:18px;background:rgba(34,197,94,0.07);border:1px solid rgba(34,197,94,0.15);border-radius:var(--radius-md);text-align:center">
           <div style="font-size:10px;color:var(--success);font-weight:700;margin-bottom:8px;letter-spacing:1px;text-transform:uppercase">Valore Totale Offerte</div>
           <div style="font-size:24px;font-weight:700;color:var(--success);letter-spacing:-0.04em">€${fmtMoney(totalOff)}</div>
@@ -1950,11 +1966,16 @@ function renderPipeline() {
            ondragstart="pipeDragStart(event,'${c.id}')"
            ondragend="pipeDragEnd(event)"
            onclick="if(!window._pipeDragged) openContactModal('${c.id}')">
-        <div class="pipe-card-name">${c.nome||''} ${c.cognome||''}</div>
-        ${c.azienda?`<div class="pipe-card-co">${c.azienda}</div>`:''}
-        ${c.valore_offerta?`<div class="pipe-card-val">€${fmtMoney(c.valore_offerta)}</div>`:''}
+        <div class="pipe-card-top">
+          <div class="pipe-card-av" style="background:${avatarColor(c)}">${initials(c)}</div>
+          <div style="flex:1;min-width:0">
+            <div class="pipe-card-name">${c.nome||''} ${c.cognome||''}</div>
+            ${c.azienda?`<div class="pipe-card-co">${c.azienda}</div>`:''}
+          </div>
+          ${c.priorita?`<span class="badge ${PRIO_CLASS[c.priorita]}" style="font-size:9px;padding:2px 5px;flex-shrink:0;margin-left:2px">${c.priorita}</span>`:''}
+        </div>
+        ${(c.valore_offerta||c.data_azione)?`<div class="pipe-card-row">${c.valore_offerta?`<span class="pipe-card-val">€${fmtMoney(c.valore_offerta)}</span>`:'<span></span>'}${c.data_azione?`<span class="pipe-card-date">${fmtDate(c.data_azione)}</span>`:''}</div>`:''}
         ${c.prossima_azione?`<div class="pipe-card-action">→ ${c.prossima_azione}</div>`:''}
-        ${c.priorita?`<span class="badge ${PRIO_CLASS[c.priorita]}" style="font-size:10px;margin-top:4px;display:inline-block">${c.priorita}</span>`:''}
       </div>`).join('') || `<div class="pipe-empty">Nessun contatto</div>`;
     const col = STAGE_COLOR[stage];
     return `<div class="pipe-col"
