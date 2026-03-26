@@ -1142,6 +1142,19 @@ textarea { resize: vertical; min-height: 78px; }
 
 <script>
 // ─────────────────────────────────────────────
+// ANDROID PWA INSTALL PROMPT
+// Must be captured as early as possible before the browser dismisses it
+// ─────────────────────────────────────────────
+let _deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  _deferredInstallPrompt = e;
+});
+window.addEventListener('appinstalled', () => {
+  _deferredInstallPrompt = null;
+});
+
+// ─────────────────────────────────────────────
 // SUPABASE CONFIG
 // ─────────────────────────────────────────────
 const SUPABASE_URL = 'https://qabqqizrlzsswuervggx.supabase.co';
@@ -1569,7 +1582,6 @@ function renderDashboard() {
 // ─────────────────────────────────────────────
 function renderContacts() {
   if (contactsViewMode === 'spreadsheet') { renderContactsSpreadsheet(); return; }
-  const searchHadFocus = document.activeElement && document.activeElement.classList.contains('filter-input');
   const list = getFiltered();
   const totalPages = Math.max(1, Math.ceil(list.length / contactsPageSize));
   if (contactsPage >= totalPages) contactsPage = totalPages - 1;
@@ -1614,27 +1626,37 @@ function renderContacts() {
   const pageSizeOpts = [100,200,500,1000].map(n=>`<option value="${n}"${contactsPageSize===n?' selected':''}>${n}</option>`).join('');
   const pageStart = list.length ? contactsPage * contactsPageSize + 1 : 0;
   const pageEnd   = Math.min((contactsPage + 1) * contactsPageSize, list.length);
-  document.getElementById('content').innerHTML = `
-    <div class="filter-bar">
-      <input type="text" class="filter-input" placeholder="🔍 Cerca per nome, azienda, email..." value="${fText}"
-        oninput="fText=this.value;contactsPage=0;renderContacts()">
-      <select class="filter-select" onchange="fStage=this.value;contactsPage=0;renderContacts()">
-        <option value="">Tutti gli stage</option>
-        ${STAGES.map(s=>`<option value="${s}"${fStage===s?' selected':''}>${s}</option>`).join('')}
-      </select>
-      <select class="filter-select" onchange="fPrio=this.value;contactsPage=0;renderContacts()">
-        <option value="">Tutte le priorità</option>
-        ${PRIORITIES.map(p=>`<option value="${p}"${fPrio===p?' selected':''}>${p}</option>`).join('')}
-      </select>
-      <select class="filter-select" onchange="contactsPageSize=+this.value;contactsPage=0;renderContacts()" title="Righe per pagina">
-        ${pageSizeOpts}
-      </select>
-      <span style="font-size:12.5px;color:var(--muted);white-space:nowrap">${pageStart}–${pageEnd} di ${list.length}</span>
-      <div class="view-toggle">
-        <button class="view-btn active" onclick="contactsViewMode='list';renderContacts()">☰ Lista</button>
-        <button class="view-btn" onclick="contactsViewMode='spreadsheet';selectedContacts=new Set();renderContacts()">⊞ Tabella</button>
+
+  // Render filter bar only once; subsequent calls only update the body
+  if (!document.getElementById('contacts-body')) {
+    document.getElementById('content').innerHTML = `
+      <div class="filter-bar">
+        <input type="text" class="filter-input" placeholder="🔍 Cerca per nome, azienda, email..." value="${fText}"
+          oninput="fText=this.value;contactsPage=0;renderContacts()">
+        <select class="filter-select" onchange="fStage=this.value;contactsPage=0;renderContacts()">
+          <option value="">Tutti gli stage</option>
+          ${STAGES.map(s=>`<option value="${s}"${fStage===s?' selected':''}>${s}</option>`).join('')}
+        </select>
+        <select class="filter-select" onchange="fPrio=this.value;contactsPage=0;renderContacts()">
+          <option value="">Tutte le priorità</option>
+          ${PRIORITIES.map(p=>`<option value="${p}"${fPrio===p?' selected':''}>${p}</option>`).join('')}
+        </select>
+        <select class="filter-select" onchange="contactsPageSize=+this.value;contactsPage=0;renderContacts()" title="Righe per pagina">
+          ${pageSizeOpts}
+        </select>
+        <span id="contacts-count" style="font-size:12.5px;color:var(--muted);white-space:nowrap">${pageStart}–${pageEnd} di ${list.length}</span>
+        <div class="view-toggle">
+          <button class="view-btn active" onclick="contactsViewMode='list';renderContacts()">☰ Lista</button>
+          <button class="view-btn" onclick="contactsViewMode='spreadsheet';selectedContacts=new Set();renderContacts()">⊞ Tabella</button>
+        </div>
       </div>
-    </div>
+      <div id="contacts-body"></div>`;
+  } else {
+    const countEl = document.getElementById('contacts-count');
+    if (countEl) countEl.textContent = `${pageStart}–${pageEnd} di ${list.length}`;
+  }
+
+  document.getElementById('contacts-body').innerHTML = `
     <div class="table-card">
       <table>
         <thead><tr>
@@ -1656,10 +1678,6 @@ function renderContacts() {
       <button class="btn btn-secondary btn-sm" onclick="contactsPage++;renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>Succ ›</button>
       <button class="btn btn-secondary btn-sm" onclick="contactsPage=${totalPages-1};renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>»</button>
     </div>` : ''}`;
-  if (searchHadFocus) {
-    const fi = document.querySelector('.filter-input');
-    if (fi) { fi.focus(); fi.setSelectionRange(fText.length, fText.length); }
-  }
 }
 
 function getFiltered() {
@@ -2692,6 +2710,19 @@ async function renderSettings() {
   }
   const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
   const isInStandaloneIOS = isIOS && window.matchMedia('(display-mode: standalone)').matches;
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  const isAndroid = /Android/.test(navigator.userAgent);
+
+  // Android install card: shown only when the browser has an install prompt ready
+  const androidInstallCard = (!isStandalone && _deferredInstallPrompt) ? `
+      <div class="settings-card">
+        <div class="settings-card-icon">📲</div>
+        <h3>Installa App su Android</h3>
+        <p>Aggiungi AstralPage CRM alla schermata Home per un accesso rapido e per ricevere notifiche push anche quando il browser è chiuso.</p>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary btn-sm" onclick="installAndroidApp()">Installa app</button>
+        </div>
+      </div>` : '';
 
   // Build the notification card HTML
   let notifCardBody = '';
@@ -2803,6 +2834,8 @@ async function renderSettings() {
         ${s.updated_at ? `<span class="settings-last-save">Ultimo salvataggio: ${new Date(s.updated_at).toLocaleString('it-IT')}</span>` : ''}
       </div>
 
+      ${androidInstallCard}
+
       <div class="settings-card">
         <div class="settings-card-icon">🔔</div>
         <h3>Notifiche Push</h3>
@@ -2850,6 +2883,16 @@ async function disableNotifications() {
   await _unsubscribeFromPush();
   toast('Notifiche disattivate', 'ok');
   renderSettings();
+}
+
+async function installAndroidApp() {
+  if (!_deferredInstallPrompt) return;
+  _deferredInstallPrompt.prompt();
+  const { outcome } = await _deferredInstallPrompt.userChoice;
+  if (outcome === 'accepted') {
+    _deferredInstallPrompt = null;
+    renderSettings();
+  }
 }
 
 function toggleSmtpPwd() {
