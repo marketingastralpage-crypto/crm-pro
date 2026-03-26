@@ -1582,17 +1582,28 @@ function renderDashboard() {
 // ─────────────────────────────────────────────
 function renderContacts() {
   if (contactsViewMode === 'spreadsheet') { renderContactsSpreadsheet(); return; }
-  const _activeEl = document.activeElement;
-  const _searchFocused = _activeEl && _activeEl.classList && _activeEl.classList.contains('filter-input');
-  const _selStart = _searchFocused ? _activeEl.selectionStart : null;
-  const list = getFiltered();
-  const totalPages = Math.max(1, Math.ceil(list.length / contactsPageSize));
-  if (contactsPage >= totalPages) contactsPage = totalPages - 1;
-  const pageList = list.slice(contactsPage * contactsPageSize, (contactsPage + 1) * contactsPageSize);
+
+  // Filter by stage/priority/sort only — text filter is applied live via CSS
+  const list = contacts
+    .filter(c => {
+      if (fStage && c.stage !== fStage) return false;
+      if (fPrio && c.priorita !== fPrio) return false;
+      return true;
+    })
+    .sort((a,b) => {
+      let va=a[sortField], vb=b[sortField];
+      if (va==null && vb==null) return 0;
+      if (va==null) return 1; if (vb==null) return -1;
+      va=va||''; vb=vb||'';
+      if (!isNaN(parseFloat(va))&&!isNaN(parseFloat(vb))) { va=parseFloat(va)||0; vb=parseFloat(vb)||0; }
+      const r = va<vb?-1:va>vb?1:0;
+      return sortDir==='asc'?r:-r;
+    });
+
   const today = new Date(); today.setHours(0,0,0,0);
   const in3 = new Date(today); in3.setDate(in3.getDate()+3);
 
-  const rows = pageList.length ? pageList.map(c => {
+  const rows = list.length ? list.map(c => {
     let dateHtml = '';
     if (c.data_azione) {
       const d = new Date(c.data_azione);
@@ -1605,7 +1616,8 @@ function renderContacts() {
       c.email     ? `<a class="btn-icon btn-link" href="mailto:${c.email}" onclick="event.stopPropagation()" title="Email">✉️</a>` : '',
       c.telefono  ? `<a class="btn-icon btn-link" href="tel:${c.telefono}" onclick="event.stopPropagation()" title="Chiama ${c.telefono}">📞</a>` : '',
     ].join('');
-    return `<tr onclick="openContactModal('${c.id}')">
+    const searchVal = `${c.nome||''} ${c.cognome||''} ${c.azienda||''} ${c.email||''} ${c.ruolo||''}`.toLowerCase().replace(/"/g,'');
+    return `<tr onclick="openContactModal('${c.id}')" data-search="${searchVal}">
       <td><div class="contact-cell">
         <div class="avatar" style="background:${avatarColor(c)}">${initials(c)}</div>
         <div><div class="contact-name">${c.nome||''} ${c.cognome||''}</div>
@@ -1626,37 +1638,27 @@ function renderContacts() {
     <div class="ei">👥</div><h3>Nessun contatto trovato</h3><p>Aggiungi il tuo primo contatto</p>
   </div></td></tr>`;
 
-  const pageSizeOpts = [100,200,500,1000].map(n=>`<option value="${n}"${contactsPageSize===n?' selected':''}>${n}</option>`).join('');
-  const pageStart = list.length ? contactsPage * contactsPageSize + 1 : 0;
-  const pageEnd   = Math.min((contactsPage + 1) * contactsPageSize, list.length);
-
-  // Render filter bar only once; subsequent calls only update the body
+  // Render shell only once; on subsequent calls only refresh the table body
   if (!document.getElementById('contacts-body')) {
     document.getElementById('content').innerHTML = `
       <div class="filter-bar">
         <input type="text" class="filter-input" placeholder="🔍 Cerca per nome, azienda, email..." value="${fText}"
-          oninput="fText=this.value;contactsPage=0;renderContacts()">
-        <select class="filter-select" onchange="fStage=this.value;contactsPage=0;renderContacts()">
+          oninput="fText=this.value;filterContactsLive()">
+        <select class="filter-select" onchange="fStage=this.value;renderContacts()">
           <option value="">Tutti gli stage</option>
           ${STAGES.map(s=>`<option value="${s}"${fStage===s?' selected':''}>${s}</option>`).join('')}
         </select>
-        <select class="filter-select" onchange="fPrio=this.value;contactsPage=0;renderContacts()">
+        <select class="filter-select" onchange="fPrio=this.value;renderContacts()">
           <option value="">Tutte le priorità</option>
           ${PRIORITIES.map(p=>`<option value="${p}"${fPrio===p?' selected':''}>${p}</option>`).join('')}
         </select>
-        <select class="filter-select" onchange="contactsPageSize=+this.value;contactsPage=0;renderContacts()" title="Righe per pagina">
-          ${pageSizeOpts}
-        </select>
-        <span id="contacts-count" style="font-size:12.5px;color:var(--muted);white-space:nowrap">${pageStart}–${pageEnd} di ${list.length}</span>
+        <span id="contacts-count" style="font-size:12.5px;color:var(--muted);white-space:nowrap">${list.length} contatti</span>
         <div class="view-toggle">
           <button class="view-btn active" onclick="contactsViewMode='list';renderContacts()">☰ Lista</button>
           <button class="view-btn" onclick="contactsViewMode='spreadsheet';selectedContacts=new Set();renderContacts()">⊞ Tabella</button>
         </div>
       </div>
       <div id="contacts-body"></div>`;
-  } else {
-    const countEl = document.getElementById('contacts-count');
-    if (countEl) countEl.textContent = `${pageStart}–${pageEnd} di ${list.length}`;
   }
 
   document.getElementById('contacts-body').innerHTML = `
@@ -1671,25 +1673,24 @@ function renderContacts() {
           <th onclick="doSort('ltv')">LTV ${si('ltv')}</th>
           <th>Link &amp; Azioni</th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody id="contacts-tbody">${rows}</tbody>
       </table>
-    </div>
-    ${totalPages > 1 ? `<div class="pagination-bar">
-      <button class="btn btn-secondary btn-sm" onclick="contactsPage=0;renderContacts()" ${contactsPage===0?'disabled':''}>«</button>
-      <button class="btn btn-secondary btn-sm" onclick="contactsPage--;renderContacts()" ${contactsPage===0?'disabled':''}>‹ Prec</button>
-      <span style="font-size:13px;color:var(--text-sec)">Pag. ${contactsPage+1} / ${totalPages}</span>
-      <button class="btn btn-secondary btn-sm" onclick="contactsPage++;renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>Succ ›</button>
-      <button class="btn btn-secondary btn-sm" onclick="contactsPage=${totalPages-1};renderContacts()" ${contactsPage>=totalPages-1?'disabled':''}>»</button>
-    </div>` : ''}`;
-  if (_searchFocused) {
-    requestAnimationFrame(() => {
-      const fi = document.querySelector('.filter-input');
-      if (fi && document.activeElement !== fi) {
-        fi.focus();
-        try { fi.setSelectionRange(_selStart, _selStart); } catch(e) {}
-      }
-    });
-  }
+    </div>`;
+  filterContactsLive();
+}
+
+// Live text filter: show/hide rows with CSS — no DOM mutation, no focus loss
+function filterContactsLive() {
+  const q = fText.toLowerCase();
+  let vis = 0;
+  const rows = document.querySelectorAll('#contacts-tbody tr[data-search]');
+  rows.forEach(r => {
+    const show = !q || r.dataset.search.includes(q);
+    r.style.display = show ? '' : 'none';
+    if (show) vis++;
+  });
+  const c = document.getElementById('contacts-count');
+  if (c) c.textContent = q ? `${vis} di ${rows.length} contatti` : `${rows.length} contatti`;
 }
 
 function getFiltered() {
