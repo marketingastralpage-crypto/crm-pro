@@ -73,8 +73,8 @@ body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: v
 
 /* ── MAIN ── */
 .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-.topbar { background: rgba(7,7,15,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 14px 28px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-.topbar-title { font-size: 18px; font-weight: 700; letter-spacing: -0.04em; color: var(--text); }
+.topbar { background: rgba(7,7,15,0.85); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); padding: 14px 28px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.topbar-title { font-size: 18px; font-weight: 700; letter-spacing: -0.04em; color: var(--text); flex: 1; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 .content { flex: 1; overflow-y: auto; padding: 24px 28px; }
 
@@ -122,6 +122,7 @@ td { padding: 12px 16px; font-size: 13px; vertical-align: middle; color: var(--t
 
 /* ── BADGES ── */
 .badge { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 20px; font-size: 11px; font-weight: 500; white-space: nowrap; letter-spacing: 0.01em; }
+.s-lead-generico     { background: rgba(148,163,184,0.12); color: #94a3b8; border: 1px solid rgba(148,163,184,0.2); }
 .s-cold-call         { background: rgba(239,68,68,0.12); color: #f87171; border: 1px solid rgba(239,68,68,0.2); }
 .s-email-inviata     { background: rgba(59,130,246,0.12); color: #60a5fa; border: 1px solid rgba(59,130,246,0.2); }
 .s-call-fissata      { background: rgba(124,94,240,0.14); color: var(--primary-text); border: 1px solid rgba(124,94,240,0.25); }
@@ -223,6 +224,55 @@ textarea { resize: vertical; min-height: 78px; }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.ok   { border-left: 3px solid var(--success); }
 .toast.err  { border-left: 3px solid var(--danger); }
+
+/* ── NOTIFICATION BANNER (iPhone-style, slides from top) ── */
+.notif-banner-wrap { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 10000; pointer-events: none; width: min(380px, calc(100vw - 24px)); }
+.notif-banner { background: rgba(14,14,30,0.94); backdrop-filter: blur(20px) saturate(1.8); -webkit-backdrop-filter: blur(20px) saturate(1.8); border: 1px solid rgba(255,255,255,0.13); border-radius: 18px; padding: 12px 14px; display: flex; align-items: flex-start; gap: 11px; box-shadow: 0 8px 32px rgba(0,0,0,0.65), 0 2px 8px rgba(0,0,0,0.4); pointer-events: all; cursor: pointer; transform: translateY(-140%); opacity: 0; transition: transform 0.42s cubic-bezier(0.34,1.4,0.64,1), opacity 0.28s ease; margin-bottom: 8px; }
+.notif-banner.show { transform: translateY(0); opacity: 1; }
+.notif-banner.hide { transform: translateY(-140%); opacity: 0; transition: transform 0.32s cubic-bezier(0.4,0,1,1), opacity 0.25s ease; }
+.notif-banner-icon { width: 38px; height: 38px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
+.notif-banner-icon.event { background: rgba(124,94,240,0.25); }
+.notif-banner-icon.action { background: rgba(245,158,11,0.2); }
+.notif-banner-content { flex: 1; min-width: 0; }
+.notif-banner-app { font-size: 10px; font-weight: 600; color: rgba(255,255,255,0.38); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.notif-banner-title { font-size: 13px; font-weight: 600; color: #eeeeff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-banner-body { font-size: 12px; color: rgba(180,180,220,0.82); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; line-height: 1.4; }
+.notif-banner-time { font-size: 10.5px; color: rgba(128,128,170,0.7); flex-shrink: 0; align-self: flex-start; padding-top: 2px; }
+
+/* ── BELL BUTTON ── */
+.notif-bell-btn { position: relative; background: none; border: 1px solid var(--border-md); border-radius: var(--radius-md); width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-sec); font-size: 16px; transition: var(--transition); flex-shrink: 0; }
+.notif-bell-btn:hover { background: var(--bg-hover); color: var(--text); border-color: var(--border-lg); }
+.notif-badge { position: absolute; top: -5px; right: -5px; background: var(--danger); color: #fff; font-size: 9px; font-weight: 700; border-radius: 10px; min-width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; padding: 0 3px; border: 2px solid var(--bg); line-height: 1; }
+.notif-badge.hidden { display: none; }
+
+/* ── NOTIFICATION SIDEBAR ── */
+.notif-sidebar-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 4900; opacity: 0; pointer-events: none; transition: opacity 0.28s; }
+.notif-sidebar-backdrop.open { opacity: 1; pointer-events: all; }
+.notif-sidebar { position: fixed; top: 0; right: 0; height: 100dvh; width: 340px; max-width: 100vw; background: var(--bg-surface); border-left: 1px solid var(--border-md); z-index: 5000; display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); box-shadow: -12px 0 40px rgba(0,0,0,0.55); }
+.notif-sidebar.open { transform: translateX(0); }
+.notif-sidebar-header { padding: 16px 18px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 10px; }
+.notif-sidebar-title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.03em; }
+.notif-sidebar-actions { display: flex; align-items: center; gap: 6px; }
+.notif-mark-all { font-size: 11px; color: var(--primary-text); cursor: pointer; background: none; border: none; font-family: inherit; padding: 4px 8px; border-radius: 4px; transition: var(--transition); }
+.notif-mark-all:hover { background: var(--primary-glow); }
+.notif-close-btn { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; padding: 2px 6px; border-radius: 4px; transition: var(--transition); }
+.notif-close-btn:hover { color: var(--text); background: var(--bg-hover); }
+.notif-list { flex: 1; overflow-y: auto; }
+.notif-item { padding: 13px 18px; display: flex; align-items: flex-start; gap: 12px; cursor: pointer; transition: background .12s; border-bottom: 1px solid var(--border); position: relative; }
+.notif-item:hover { background: var(--bg-hover); }
+.notif-item.unread { background: rgba(124,94,240,0.06); }
+.notif-item.unread:hover { background: rgba(124,94,240,0.1); }
+.notif-item-icon { width: 36px; height: 36px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+.notif-item-icon.event { background: rgba(124,94,240,0.18); }
+.notif-item-icon.action { background: rgba(245,158,11,0.15); }
+.notif-item-content { flex: 1; min-width: 0; }
+.notif-item-title { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.notif-item-body { font-size: 12px; color: var(--text-sec); line-height: 1.45; }
+.notif-item-time { font-size: 11px; color: var(--muted); margin-top: 4px; }
+.notif-item-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--primary); flex-shrink: 0; margin-top: 6px; }
+.notif-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 64px 24px; color: var(--text-sec); text-align: center; gap: 10px; }
+.notif-empty-icon { font-size: 38px; opacity: 0.35; }
+.notif-empty-text { font-size: 13px; opacity: 0.6; line-height: 1.5; }
 
 /* ── MISC ── */
 .money { font-weight: 600; color: var(--success); }
@@ -710,6 +760,10 @@ textarea { resize: vertical; min-height: 78px; }
   /* TOAST: full width at bottom */
   .toast { right: 12px; left: 12px; bottom: 14px; max-width: none; }
 
+  /* NOTIFICATION SIDEBAR: full width on mobile */
+  .notif-sidebar { width: 100vw; }
+  .notif-banner-wrap { top: 8px; }
+
   /* LOGIN BOX */
   .login-box { padding: 32px 22px; margin: 16px; }
 
@@ -852,6 +906,9 @@ textarea { resize: vertical; min-height: 78px; }
       <button class="btn btn-secondary" onclick="openImport()">📤 Importa</button>
       <button class="btn btn-primary" onclick="openContactModal()">＋ Aggiungi Contatto</button>
     </div>
+    <button class="notif-bell-btn" id="notifBellBtn" onclick="toggleNotifSidebar()" aria-label="Notifiche">
+      🔔<span class="notif-badge hidden" id="notifBadge"></span>
+    </button>
   </div>
   <div class="content" id="content">
     <div class="loading-wrap"><div class="spinner"></div> Caricamento...</div>
@@ -877,10 +934,16 @@ textarea { resize: vertical; min-height: 78px; }
         <div class="form-group"><label>LinkedIn</label><input id="f_linkedin" type="url" placeholder="https://linkedin.com/in/..."></div>
         <div class="form-group"><label>Sito Web</label><input id="f_sito" type="url" placeholder="https://example.com"></div>
 
+        <div class="form-section">Indirizzo</div>
+        <div class="form-group full"><label>Via</label><input id="f_via" type="text" placeholder="Via Emilia Ponente, 106/A"></div>
+        <div class="form-group"><label>Città</label><input id="f_citta" type="text" placeholder="Casalecchio di Reno"></div>
+        <div class="form-group"><label>Provincia</label><input id="f_provincia" type="text" placeholder="Bologna"></div>
+        <div class="form-group"><label>Stato</label><input id="f_stato" type="text" placeholder="Italia"></div>
+
         <div class="form-section">Stato &amp; Azioni</div>
         <div class="form-group"><label>Stage</label>
           <select id="f_stage">
-            <option>Cold call</option><option>Email inviata</option><option>Call fissata</option>
+            <option>Lead generico</option><option>Cold call</option><option>Email inviata</option><option>Call fissata</option>
             <option>Preventivo inviato</option><option>Call annullata</option>
             <option>Followup inviato</option><option>Non interessato</option><option>Cliente</option>
           </select></div>
@@ -1038,6 +1101,24 @@ textarea { resize: vertical; min-height: 78px; }
   <span id="toastIcon">✓</span><span id="toastMsg"></span>
 </div>
 
+<!-- IN-APP NOTIFICATION BANNER (iPhone-style, slides from top) -->
+<div id="notifBannerWrap" class="notif-banner-wrap"></div>
+
+<!-- NOTIFICATION SIDEBAR BACKDROP -->
+<div class="notif-sidebar-backdrop" id="notifSidebarBackdrop" onclick="closeNotifSidebar()"></div>
+
+<!-- NOTIFICATION SIDEBAR -->
+<div class="notif-sidebar" id="notifSidebar">
+  <div class="notif-sidebar-header">
+    <span class="notif-sidebar-title">🔔 Notifiche</span>
+    <div class="notif-sidebar-actions">
+      <button class="notif-mark-all" onclick="markAllNotifRead()">Segna tutte come lette</button>
+      <button class="notif-close-btn" onclick="closeNotifSidebar()" aria-label="Chiudi">✕</button>
+    </div>
+  </div>
+  <div class="notif-list" id="notifList"></div>
+</div>
+
 <script>
 // ─────────────────────────────────────────────
 // SUPABASE CONFIG
@@ -1050,22 +1131,23 @@ const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-const STAGES = ['Cold call','Email inviata','Call fissata','Preventivo inviato','Call annullata','Followup inviato','Non interessato','Cliente'];
+const STAGES = ['Lead generico','Cold call','Email inviata','Call fissata','Preventivo inviato','Call annullata','Followup inviato','Non interessato','Cliente'];
 const PRIORITIES = ['Bassa','Media','Alta'];
 const NEXT_ACTIONS = ['Inviare Email','Preparare preventivo','Chiudere il contratto','Chiamare','Delivery','Contatto futuro'];
 
 const STAGE_CLASS = {
-  'Cold call':'s-cold-call','Email inviata':'s-email-inviata','Call fissata':'s-call-fissata',
+  'Lead generico':'s-lead-generico','Cold call':'s-cold-call','Email inviata':'s-email-inviata','Call fissata':'s-call-fissata',
   'Preventivo inviato':'s-preventivo','Call annullata':'s-call-annullata','Followup inviato':'s-followup',
   'Non interessato':'s-non-interessato','Cliente':'s-cliente'
 };
 const STAGE_COLOR = {
-  'Cold call':'#f87171','Email inviata':'#60a5fa','Call fissata':'#a88bf5','Preventivo inviato':'#fbbf24',
+  'Lead generico':'#94a3b8','Cold call':'#f87171','Email inviata':'#60a5fa','Call fissata':'#a88bf5','Preventivo inviato':'#fbbf24',
   'Call annullata':'#f87171','Followup inviato':'#2dd4bf','Non interessato':'#6b7280','Cliente':'#4ade80'
 };
 const PRIO_CLASS = {'Alta':'p-alta','Media':'p-media','Bassa':'p-bassa'};
 
 const FIELDS = ['nome','cognome','azienda','ruolo','email','telefono','linkedin','sito',
+  'via','citta','provincia','stato',
   'stage','priorita','prossima_azione','data_azione','valore_offerta','valore_rinnovo',
   'durata_mesi','ltv','data_chiusura','data_rinnovo','note'];
 
@@ -1204,11 +1286,17 @@ async function bootApp() {
   });
 
   await Promise.all([loadContacts(), loadSmtpSettings()]);
+  initNotifications(); // async, runs in background - no await needed
 
   // Hide loader
   const loader = document.getElementById('loader');
   loader.style.opacity = '0';
   setTimeout(() => loader.style.display = 'none', 300);
+}
+
+function normalizeStage(c) {
+  if (!c.stage || !STAGES.includes(c.stage)) c.stage = 'Lead generico';
+  return c;
 }
 
 async function loadContacts() {
@@ -1226,7 +1314,7 @@ async function loadContacts() {
     if (!data || data.length < PAGE) break;
     from += PAGE;
   }
-  contacts = all;
+  contacts = all.map(normalizeStage);
   document.getElementById('dbDot').classList.remove('offline');
   document.getElementById('sideCount').textContent = contacts.length;
   renderView();
@@ -1475,9 +1563,10 @@ function renderContacts() {
       dateHtml = `<div class="${cls}" style="font-size:12px">${fmtDate(c.data_azione)}${cls==='date-exp'?' ⚠️':''}</div>`;
     }
     const links = [
-      c.linkedin ? `<a class="btn-icon btn-link" href="${c.linkedin}" target="_blank" onclick="event.stopPropagation()" title="LinkedIn" style="font-size:11px;font-weight:700">in</a>` : '',
-      c.sito     ? `<a class="btn-icon btn-link" href="${c.sito}" target="_blank" onclick="event.stopPropagation()" title="Sito Web">🌐</a>` : '',
-      c.email    ? `<a class="btn-icon btn-link" href="mailto:${c.email}" onclick="event.stopPropagation()" title="Email">✉️</a>` : '',
+      c.linkedin  ? `<a class="btn-icon btn-link" href="${c.linkedin}" target="_blank" onclick="event.stopPropagation()" title="LinkedIn" style="font-size:11px;font-weight:700">in</a>` : '',
+      c.sito      ? `<a class="btn-icon btn-link" href="${c.sito}" target="_blank" onclick="event.stopPropagation()" title="Sito Web">🌐</a>` : '',
+      c.email     ? `<a class="btn-icon btn-link" href="mailto:${c.email}" onclick="event.stopPropagation()" title="Email">✉️</a>` : '',
+      c.telefono  ? `<a class="btn-icon btn-link" href="tel:${c.telefono}" onclick="event.stopPropagation()" title="Chiama ${c.telefono}">📞</a>` : '',
     ].join('');
     return `<tr onclick="openContactModal('${c.id}')">
       <td><div class="contact-cell">
@@ -1585,6 +1674,12 @@ const SP_COLS = [
   {key:'ruolo',           label:'Ruolo',          type:'text'},
   {key:'email',           label:'Email',          type:'email'},
   {key:'telefono',        label:'Telefono',       type:'text'},
+  {key:'linkedin',        label:'LinkedIn',       type:'text'},
+  {key:'sito',            label:'Sito Web',       type:'text'},
+  {key:'via',             label:'Via',            type:'text'},
+  {key:'citta',           label:'Città',          type:'text'},
+  {key:'provincia',       label:'Provincia',      type:'text'},
+  {key:'stato',           label:'Stato',          type:'text'},
   {key:'stage',           label:'Stage',          type:'select', opts: null},
   {key:'priorita',        label:'Priorità',       type:'select', opts: null},
   {key:'prossima_azione', label:'Prossima Azione',type:'text'},
@@ -1617,6 +1712,22 @@ function renderContactsSpreadsheet() {
         return `<td><select class="sp-select" data-id="${c.id}" data-field="${col.key}" onchange="spChange(this)">${opts}</select></td>`;
       }
       const escaped = val.replace(/"/g,'&quot;');
+      if (col.key === 'telefono') {
+        const btn = val ? `<a class="btn-icon btn-link" href="tel:${val}" title="Chiama ${val}" style="flex-shrink:0">📞</a>` : '';
+        return `<td><div style="display:flex;align-items:center;gap:4px"><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)">${btn}</div></td>`;
+      }
+      if (col.key === 'email') {
+        const btn = val ? `<a class="btn-icon btn-link" href="mailto:${val}" title="Scrivi a ${val}" style="flex-shrink:0">✉️</a>` : '';
+        return `<td><div style="display:flex;align-items:center;gap:4px"><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)">${btn}</div></td>`;
+      }
+      if (col.key === 'linkedin') {
+        const btn = val ? `<a class="btn-icon btn-link" href="${val}" target="_blank" title="Apri LinkedIn" style="flex-shrink:0;font-size:11px;font-weight:700">in</a>` : '';
+        return `<td><div style="display:flex;align-items:center;gap:4px"><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)">${btn}</div></td>`;
+      }
+      if (col.key === 'sito') {
+        const btn = val ? `<a class="btn-icon btn-link" href="${val}" target="_blank" title="Apri sito web" style="flex-shrink:0">🌐</a>` : '';
+        return `<td><div style="display:flex;align-items:center;gap:4px"><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)">${btn}</div></td>`;
+      }
       return `<td><input class="sp-input" type="${col.type}" data-id="${c.id}" data-field="${col.key}" value="${escaped}" onchange="spChange(this)"></td>`;
     }).join('');
     return `<tr class="${sel?'sp-selected':''}">
@@ -2048,7 +2159,7 @@ function splitCSV(line) {
 
 function processRows(rows) {
   if(!rows.length){toast('Nessun dato trovato','err');return;}
-  importBatch = rows.map((row,i)=>{const c={id:uid(),user_id:currentUser.id,import_order:i};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return c;});
+  importBatch = rows.map((row,i)=>{const c={id:uid(),user_id:currentUser.id,import_order:i};FIELDS.forEach(f=>c[f]=String(row[f]||'').trim()||null);return normalizeStage(c);});
   const prev=document.getElementById('importPreview');
   prev.classList.remove('hidden');
   prev.innerHTML=`<strong>✅ ${importBatch.length} contatti pronti per l'importazione</strong>
@@ -2088,12 +2199,14 @@ async function confirmImport() {
 function downloadSample(fmt) {
   const s1={nome:'Mario',cognome:'Rossi',azienda:'Acme Srl',ruolo:'CEO',email:'mario.rossi@acme.com',
     telefono:'+39 333 1234567',linkedin:'https://linkedin.com/in/mario-rossi',sito:'https://acme.com',
+    via:'Via Emilia Ponente, 106/A',citta:'Casalecchio di Reno',provincia:'Bologna',stato:'Italia',
     stage:'Email inviata',priorita:'Alta',prossima_azione:'Chiamare',data_azione:'2026-04-01',
     valore_offerta:'5000',valore_rinnovo:'1200',durata_mesi:'12',ltv:'6200',
     data_chiusura:'2026-05-01',data_rinnovo:'2027-05-01',note:'Interessato al piano Enterprise'};
   const s2={nome:'Laura',cognome:'Bianchi',azienda:'Beta SpA',ruolo:'Marketing Director',
     email:'laura.bianchi@beta.it',telefono:'+39 02 9876543',linkedin:'https://linkedin.com/in/laura-bianchi',
-    sito:'https://beta.it',stage:'Call fissata',priorita:'Media',prossima_azione:'Preparare preventivo',
+    sito:'https://beta.it',via:'Via Roma, 25',citta:'Milano',provincia:'Milano',stato:'Italia',
+    stage:'Call fissata',priorita:'Media',prossima_azione:'Preparare preventivo',
     data_azione:'2026-03-25',valore_offerta:'8500',valore_rinnovo:'2400',durata_mesi:'24',ltv:'66100',
     data_chiusura:'',data_rinnovo:'',note:'Budget approvato. Vuole demo.'};
 
@@ -2140,6 +2253,298 @@ function toast(msg,type='ok') {
   document.getElementById('toastMsg').textContent=msg;
   el.className=`toast ${type} show`;
   clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),3200);
+}
+
+// ─────────────────────────────────────────────
+// NOTIFICATION SYSTEM
+// ─────────────────────────────────────────────
+let _notifQueue = [];
+let _notifShowing = false;
+const _notifTimers = [];
+
+function _notifKey() { return `crm_notifs_${currentUser?.id || 'anon'}`; }
+
+function _loadNotifs() {
+  try { return JSON.parse(localStorage.getItem(_notifKey()) || '[]'); }
+  catch { return []; }
+}
+
+function _saveNotifs(notifs) {
+  localStorage.setItem(_notifKey(), JSON.stringify(notifs));
+}
+
+function _fmtRelTime(ts) {
+  const diff = Date.now() - ts;
+  if (diff < 60000) return 'adesso';
+  if (diff < 3600000) return `${Math.floor(diff/60000)} min fa`;
+  if (diff < 86400000) return `${Math.floor(diff/3600000)} ore fa`;
+  return `${Math.floor(diff/86400000)} giorni fa`;
+}
+
+function _fmtTime(date) {
+  return date.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+}
+
+// ── INIT (called on bootApp) ──────────────────
+async function initNotifications() {
+  // Register service worker for background notifications
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  }
+  // Request browser notification permission
+  if ('Notification' in window && Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
+  await checkAndScheduleNotifications();
+  updateNotifBadge();
+}
+
+// ── CHECK & SCHEDULE ──────────────────────────
+async function checkAndScheduleNotifications() {
+  if (!currentUser) return;
+  const now = Date.now();
+  const stored = _loadNotifs();
+  const storedIds = new Set(stored.map(n => n.id));
+  const newNotifs = [];
+
+  // ── Calendar events: notify 1 hour before start ──
+  try {
+    const in48h = new Date(now + 48 * 3600 * 1000).toISOString();
+    const { data: events } = await db.from('calendar_events')
+      .select('id, title, start_time')
+      .eq('user_id', currentUser.id)
+      .gte('start_time', new Date(now - 2 * 3600 * 1000).toISOString()) // include recent past
+      .lte('start_time', in48h);
+
+    for (const ev of (events || [])) {
+      const startMs = new Date(ev.start_time).getTime();
+      const fireAt = startMs - 3600 * 1000; // 1 hour before
+      const id = `ev_${ev.id}`;
+      if (!storedIds.has(id)) {
+        const startDate = new Date(ev.start_time);
+        newNotifs.push({
+          id,
+          type: 'event',
+          title: 'Evento in calendario',
+          body: `"${ev.title}" inizia alle ${_fmtTime(startDate)}`,
+          fireAt,
+          read: false,
+          shown: false,
+          createdAt: now,
+          eventId: ev.id,
+        });
+      }
+    }
+  } catch (e) { /* calendar events unavailable */ }
+
+  // ── Actions due tomorrow: notify at 23:00 today ──
+  try {
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+    // Fire at 23:00 of the day before (i.e. today)
+    const todayStr = new Date(now).toISOString().split('T')[0];
+    const fireAt23 = new Date(todayStr + 'T23:00:00').getTime();
+
+    const { data: acts } = await db.from('contacts')
+      .select('id, nome, cognome, prossima_azione, data_azione')
+      .eq('user_id', currentUser.id)
+      .eq('data_azione', tomorrowStr)
+      .not('prossima_azione', 'is', null);
+
+    for (const c of (acts || [])) {
+      const id = `act_${c.id}_${tomorrowStr}`;
+      if (!storedIds.has(id)) {
+        const name = [c.nome, c.cognome].filter(Boolean).join(' ') || 'Contatto';
+        newNotifs.push({
+          id,
+          type: 'action',
+          title: 'Azione in scadenza domani',
+          body: `${c.prossima_azione} — ${name}`,
+          fireAt: fireAt23,
+          read: false,
+          shown: false,
+          createdAt: now,
+          contactId: c.id,
+        });
+      }
+    }
+  } catch (e) { /* contacts unavailable */ }
+
+  // ── Merge, clean (keep 7 days), save ──
+  const sevenDaysAgo = now - 7 * 24 * 3600 * 1000;
+  const allNotifs = [...stored, ...newNotifs].filter(n => n.createdAt > sevenDaysAgo);
+  _saveNotifs(allNotifs);
+
+  // ── Process: fire immediately if overdue, or set timer ──
+  // Clear existing timers from previous check
+  _notifTimers.forEach(t => clearTimeout(t));
+  _notifTimers.length = 0;
+
+  for (const n of allNotifs) {
+    if (n.shown) continue;
+    if (n.fireAt <= now && n.fireAt > now - 3 * 3600 * 1000) {
+      // Overdue within last 3 hours → show immediately
+      _fireNotification(n.id);
+    } else if (n.fireAt > now) {
+      // Schedule for this session
+      const delay = n.fireAt - now;
+      const t = setTimeout(() => _fireNotification(n.id), delay);
+      _notifTimers.push(t);
+    }
+  }
+}
+
+function _fireNotification(notifId) {
+  const notifs = _loadNotifs();
+  const n = notifs.find(x => x.id === notifId);
+  if (!n || n.shown) return;
+  n.shown = true;
+  _saveNotifs(notifs);
+
+  // Queue in-app banner
+  _notifQueue.push({ ...n });
+  if (!_notifShowing) _processNotifQueue();
+
+  // Browser / OS notification
+  if ('Notification' in window && Notification.permission === 'granted') {
+    const opts = {
+      body: n.body,
+      icon: './astralpage_logo.svg',
+      badge: './astralpage_logo.svg',
+      tag: n.id,
+      renotify: false,
+    };
+    if (navigator.serviceWorker?.controller) {
+      navigator.serviceWorker.ready
+        .then(reg => reg.showNotification(n.title, opts))
+        .catch(() => new Notification(n.title, opts));
+    } else {
+      try { new Notification(n.title, opts); } catch {}
+    }
+  }
+
+  updateNotifBadge();
+  renderNotifSidebar();
+}
+
+// ── IN-APP BANNER QUEUE ───────────────────────
+function _processNotifQueue() {
+  if (_notifQueue.length === 0) { _notifShowing = false; return; }
+  _notifShowing = true;
+  _showInAppBanner(_notifQueue.shift());
+}
+
+function _showInAppBanner(n) {
+  const wrap = document.getElementById('notifBannerWrap');
+  if (!wrap) return;
+  const icon = n.type === 'event' ? '📅' : '⏰';
+  const div = document.createElement('div');
+  div.className = 'notif-banner';
+  div.innerHTML =
+    `<div class="notif-banner-icon ${n.type}">${icon}</div>` +
+    `<div class="notif-banner-content">` +
+      `<div class="notif-banner-app">AstralPage CRM</div>` +
+      `<div class="notif-banner-title">${n.title}</div>` +
+      `<div class="notif-banner-body">${n.body}</div>` +
+    `</div>` +
+    `<div class="notif-banner-time">ora</div>`;
+  div.onclick = () => _dismissBanner(div);
+  wrap.appendChild(div);
+  // Trigger slide-down animation
+  requestAnimationFrame(() => requestAnimationFrame(() => div.classList.add('show')));
+  // Auto-dismiss after 4.5 s
+  setTimeout(() => _dismissBanner(div), 4500);
+}
+
+function _dismissBanner(div) {
+  if (div._dismissed) return;
+  div._dismissed = true;
+  div.classList.remove('show');
+  div.classList.add('hide');
+  setTimeout(() => {
+    div.remove();
+    setTimeout(_processNotifQueue, 180); // small gap between banners
+  }, 380);
+}
+
+// ── BELL BADGE ────────────────────────────────
+function updateNotifBadge() {
+  const notifs = _loadNotifs();
+  const unread = notifs.filter(n => !n.read).length;
+  const badge = document.getElementById('notifBadge');
+  if (!badge) return;
+  if (unread > 0) {
+    badge.textContent = unread > 99 ? '99+' : unread;
+    badge.classList.remove('hidden');
+  } else {
+    badge.classList.add('hidden');
+  }
+}
+
+// ── SIDEBAR TOGGLE ────────────────────────────
+function toggleNotifSidebar() {
+  const sidebar = document.getElementById('notifSidebar');
+  if (sidebar.classList.contains('open')) closeNotifSidebar();
+  else openNotifSidebar();
+}
+
+function openNotifSidebar() {
+  renderNotifSidebar();
+  document.getElementById('notifSidebar').classList.add('open');
+  document.getElementById('notifSidebarBackdrop').classList.add('open');
+}
+
+function closeNotifSidebar() {
+  document.getElementById('notifSidebar').classList.remove('open');
+  document.getElementById('notifSidebarBackdrop').classList.remove('open');
+}
+
+// ── SIDEBAR RENDER ────────────────────────────
+function renderNotifSidebar() {
+  const el = document.getElementById('notifList');
+  if (!el) return;
+  const notifs = _loadNotifs().sort((a, b) => b.createdAt - a.createdAt);
+
+  if (notifs.length === 0) {
+    el.innerHTML =
+      `<div class="notif-empty">` +
+        `<div class="notif-empty-icon">🔔</div>` +
+        `<div class="notif-empty-text">Nessuna notifica<br>Le notifiche per eventi e azioni appariranno qui.</div>` +
+      `</div>`;
+    return;
+  }
+
+  el.innerHTML = notifs.map(n => {
+    const icon = n.type === 'event' ? '📅' : '⏰';
+    const unreadClass = n.read ? '' : ' unread';
+    const dot = n.read ? '' : `<div class="notif-item-dot"></div>`;
+    return `<div class="notif-item${unreadClass}" onclick="markNotifRead('${n.id}')">` +
+      `<div class="notif-item-icon ${n.type}">${icon}</div>` +
+      `<div class="notif-item-content">` +
+        `<div class="notif-item-title">${n.title}</div>` +
+        `<div class="notif-item-body">${n.body}</div>` +
+        `<div class="notif-item-time">${_fmtRelTime(n.createdAt)}</div>` +
+      `</div>` +
+      dot +
+    `</div>`;
+  }).join('');
+}
+
+// ── MARK READ ─────────────────────────────────
+function markNotifRead(id) {
+  const notifs = _loadNotifs();
+  const n = notifs.find(x => x.id === id);
+  if (n) { n.read = true; _saveNotifs(notifs); }
+  updateNotifBadge();
+  renderNotifSidebar();
+}
+
+function markAllNotifRead() {
+  const notifs = _loadNotifs().map(n => ({ ...n, read: true }));
+  _saveNotifs(notifs);
+  updateNotifBadge();
+  renderNotifSidebar();
 }
 
 // ─────────────────────────────────────────────

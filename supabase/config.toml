@@ -1,2 +1,11 @@
 [functions.google-calendar]
 verify_jwt = false
+
+[functions.imap-fetch]
+verify_jwt = false
+
+[functions.smtp-send]
+verify_jwt = false
+
+[functions.groq-generate]
+verify_jwt = false

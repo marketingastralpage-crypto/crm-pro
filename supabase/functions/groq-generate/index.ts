@@ -10,6 +10,7 @@
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,22 @@ serve(async (req: Request) => {
   }
 
   try {
+    const authHeader = req.headers.get("Authorization") || "";
+    const jwt = authHeader.replace("Bearer ", "");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supa = createClient(supabaseUrl, serviceKey);
+
+    // Verify JWT via Supabase Auth API — immune to "legacy secret" toggle
+    const { data: { user }, error: authErr } = await supa.auth.getUser(jwt);
+    if (authErr || !user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const groqApiKey = Deno.env.get("GROQ_API_KEY");
     if (!groqApiKey) throw new Error("GROQ_API_KEY non configurata nei secrets della edge function");
 

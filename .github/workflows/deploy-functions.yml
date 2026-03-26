@@ -1,0 +1,34 @@
+name: Deploy Supabase Edge Functions
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.30.4  # pinned — update intentionally, do NOT change to "latest"
+
+      - name: Deploy all edge functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          PROJECT_REF="qabqqizrlzsswuervggx"
+
+          # All functions use --no-verify-jwt: JWT is verified inside each function
+          # via supabase.auth.getUser(jwt), which is immune to the "legacy secret" toggle.
+          for fn_path in supabase/functions/*/; do
+            fn=$(basename "$fn_path")
+            if [ -f "supabase/functions/$fn/index.ts" ]; then
+              echo "Deploying $fn..."
+              supabase functions deploy "$fn" \
+                --project-ref "$PROJECT_REF" \
+                --no-verify-jwt
+            fi
+          done

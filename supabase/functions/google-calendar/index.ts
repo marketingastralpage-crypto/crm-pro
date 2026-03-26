@@ -18,12 +18,6 @@ function getEnv(key: string): string {
   return val;
 }
 
-// Decode base64url (JWT uses base64url, not standard base64)
-function decodeBase64Url(str: string): string {
-  const b64 = str.replace(/-/g, '+').replace(/_/g, '/');
-  const padded = b64.padEnd(b64.length + (4 - b64.length % 4) % 4, '=');
-  return atob(padded);
-}
 
 async function getValidAccessToken(userId: string, supabase: ReturnType<typeof createClient>): Promise<string> {
   const { data: token, error } = await supabase
@@ -399,22 +393,20 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization') || '';
     const jwt = authHeader.replace('Bearer ', '');
 
-    let userId: string;
-    try {
-      const payload = JSON.parse(decodeBase64Url(jwt.split('.')[1]));
-      if (!payload?.sub) throw new Error('no sub');
-      userId = payload.sub;
-    } catch {
+    const supabase = createClient(
+      getEnv('SUPABASE_URL'),
+      getEnv('SUPABASE_SERVICE_ROLE_KEY')
+    );
+
+    // Verify JWT via Supabase Auth API — immune to "legacy secret" toggle
+    const { data: { user }, error: authErr } = await supabase.auth.getUser(jwt);
+    if (authErr || !user) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const supabase = createClient(
-      getEnv('SUPABASE_URL'),
-      getEnv('SUPABASE_SERVICE_ROLE_KEY')
-    );
+    const userId = user.id;
 
     const body = await req.json();
     const { action, ...params } = body;
