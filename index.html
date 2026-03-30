@@ -3472,7 +3472,7 @@ async function _runSyncBatch() {
       body: { folder: s.folder, offset: s.offset, batch_size: 50, job_id: s.jobId }
     });
 
-    if (error) throw new Error(error.message);
+    if (error) throw new Error(r?.error || error.message);
 
     const newSynced = s.synced + (r.count || 0);
     const newOffset = s.offset + (r.count || 0);

@@ -75,56 +75,58 @@ serve(async (req: Request) => {
     // deno-lint-ignore no-explicit-any
     const emails: Record<string, any>[] = [];
     let total = 0;
-    const lock = await client.getMailboxLock(folder);
 
     try {
-      // deno-lint-ignore no-explicit-any
-      const status: any = await client.status(folder, { messages: true });
-      total = status.messages ?? 0;
+      const lock = await client.getMailboxLock(folder);
+      try {
+        // deno-lint-ignore no-explicit-any
+        const status: any = await client.status(folder, { messages: true });
+        total = status.messages ?? 0;
 
-      if (total > 0 && offset < total) {
-        // Sequence range: count backwards from newest by `offset`, fetch `batchSize`
-        const rangeEnd   = total - offset;
-        const rangeStart = Math.max(1, rangeEnd - batchSize + 1);
+        if (total > 0 && offset < total) {
+          // Sequence range: count backwards from newest by `offset`, fetch `batchSize`
+          const rangeEnd   = total - offset;
+          const rangeStart = Math.max(1, rangeEnd - batchSize + 1);
 
-        for await (const msg of client.fetch(`${rangeStart}:${rangeEnd}`, {
-          envelope: true,
-          source: true,
-          flags: true,
-        })) {
-          try {
-            // deno-lint-ignore no-explicit-any
-            const parsed = await simpleParser(msg.source as any);
-            const fromAddr = parsed.from?.value?.[0];
-            const inReplyTo = parsed.inReplyTo || null;
-            const msgId = parsed.messageId ||
-              `fallback-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-            emails.push({
-              message_id:  msgId,
-              thread_id:   inReplyTo || msgId,
-              from_name:   fromAddr?.name  || "",
-              from_email:  fromAddr?.address || "",
-              to:          parsed.to?.text  || "",
-              subject:     parsed.subject   || "",
-              date:        (parsed.date || new Date()).toISOString(),
-              folder,
+          for await (const msg of client.fetch(`${rangeStart}:${rangeEnd}`, {
+            envelope: true,
+            source: true,
+            flags: true,
+          })) {
+            try {
               // deno-lint-ignore no-explicit-any
-              read:        (msg.flags as any as Set<string>).has("\\Seen"),
-              text_body:   (parsed.text || "").slice(0, 8000),
-              html_body:   (parsed.html  || "").slice(0, 50000),
-              in_reply_to: inReplyTo,
-            });
-          } catch (_) {
-            // skip malformed messages silently
+              const parsed = await simpleParser(msg.source as any);
+              const fromAddr = parsed.from?.value?.[0];
+              const inReplyTo = parsed.inReplyTo || null;
+              const msgId = parsed.messageId ||
+                `fallback-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+              emails.push({
+                message_id:  msgId,
+                thread_id:   inReplyTo || msgId,
+                from_name:   fromAddr?.name  || "",
+                from_email:  fromAddr?.address || "",
+                to:          parsed.to?.text  || "",
+                subject:     parsed.subject   || "",
+                date:        (parsed.date || new Date()).toISOString(),
+                folder,
+                // deno-lint-ignore no-explicit-any
+                read:        (msg.flags as any as Set<string>).has("\\Seen"),
+                text_body:   (parsed.text || "").slice(0, 8000),
+                html_body:   (parsed.html  || "").slice(0, 50000),
+                in_reply_to: inReplyTo,
+              });
+            } catch (_) {
+              // skip malformed messages silently
+            }
           }
         }
+      } finally {
+        lock.release();
       }
     } finally {
-      lock.release();
+      await client.logout().catch(() => {});
     }
-
-    await client.logout();
 
     let upserted = 0;
     if (emails.length > 0) {
@@ -133,7 +135,7 @@ serve(async (req: Request) => {
 
       const { error: upsertErr } = await supa
         .from("emails")
-        .upsert(emailsToUpsert, { onConflict: "user_id,message_id", ignoreDuplicates: false });
+        .upsert(emailsToUpsert, { onConflict: "user_id,message_id", ignoreDuplicates: true });
       if (upsertErr) throw new Error("Errore salvataggio email: " + upsertErr.message);
       upserted = emails.length;
 
