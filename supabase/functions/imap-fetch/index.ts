@@ -1,28 +1,13 @@
 /**
  * Supabase Edge Function: imap-fetch
- * Reads emails from the configured IMAP server and upserts them into the `emails` table.
+ * Reads emails from IMAP and upserts into `emails`. Supports batch pagination
+ * for full-mailbox sync via `offset` + `batch_size` params.
  *
- * Required Supabase table (run once in SQL Editor):
- *
- *   CREATE TABLE emails (
- *     id           UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
- *     message_id   TEXT        UNIQUE,
- *     thread_id    TEXT,
- *     from_name    TEXT,
- *     from_email   TEXT,
- *     "to"         TEXT,
- *     subject      TEXT,
- *     date         TIMESTAMPTZ,
- *     folder       TEXT        DEFAULT 'INBOX',
- *     read         BOOLEAN     DEFAULT FALSE,
- *     text_body    TEXT,
- *     html_body    TEXT,
- *     in_reply_to  TEXT,
- *     created_at   TIMESTAMPTZ DEFAULT NOW()
- *   );
- *   CREATE INDEX ON emails (folder, date DESC);
- *   CREATE INDEX ON emails (thread_id);
- *   CREATE INDEX ON emails (message_id);
+ * Body params:
+ *   folder     (string)  "INBOX" | "SENT"  — default "INBOX"
+ *   offset     (number)  how many messages from the end to skip — default 0
+ *   batch_size (number)  messages per call — default 50, max 100
+ *   job_id     (string)  UUID of email_sync_jobs row — optional, updates progress
  */
 
 import { serve } from "https://deno.land/std@0.177.0/http/server.ts";
@@ -48,7 +33,7 @@ serve(async (req: Request) => {
     const serviceKey  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supa = createClient(supabaseUrl, serviceKey);
 
-    // Verify JWT via Supabase Auth API — immune to "legacy secret" toggle
+    // Verify JWT — immune to "legacy secret" toggle
     const { data: { user }, error: authErr } = await supa.auth.getUser(jwt);
     if (authErr || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
@@ -58,7 +43,7 @@ serve(async (req: Request) => {
     }
     const userId = user.id;
 
-    // Load IMAP/SMTP settings from DB — filtered by the requesting user
+    // Load IMAP/SMTP settings
     const { data: cfg, error: cfgErr } = await supa
       .from("smtp_settings")
       .select("*")
@@ -71,7 +56,10 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const folder: string = body.folder || "INBOX";
+    const folder: string    = body.folder     || "INBOX";
+    const offset: number    = Math.max(0, Number(body.offset) || 0);
+    const batchSize: number = Math.min(Math.max(1, Number(body.batch_size) || 50), 100);
+    const jobId: string | null = body.job_id || null;
 
     const imapPort = cfg.imap_porta || 993;
     const client = new ImapFlow({
@@ -86,16 +74,20 @@ serve(async (req: Request) => {
 
     // deno-lint-ignore no-explicit-any
     const emails: Record<string, any>[] = [];
+    let total = 0;
     const lock = await client.getMailboxLock(folder);
 
     try {
       // deno-lint-ignore no-explicit-any
       const status: any = await client.status(folder, { messages: true });
-      const total: number = status.messages ?? 0;
+      total = status.messages ?? 0;
 
-      if (total > 0) {
-        const rangeStart = Math.max(1, total - 29); // fetch last 30 messages
-        for await (const msg of client.fetch(`${rangeStart}:${total}`, {
+      if (total > 0 && offset < total) {
+        // Sequence range: count backwards from newest by `offset`, fetch `batchSize`
+        const rangeEnd   = total - offset;
+        const rangeStart = Math.max(1, rangeEnd - batchSize + 1);
+
+        for await (const msg of client.fetch(`${rangeStart}:${rangeEnd}`, {
           envelope: true,
           source: true,
           flags: true,
@@ -136,8 +128,7 @@ serve(async (req: Request) => {
 
     let upserted = 0;
     if (emails.length > 0) {
-      // Upsert email content WITHOUT the read column so we never overwrite
-      // a locally-marked-read email back to false. New rows get read=false by default.
+      // Upsert WITHOUT read column so we never overwrite locally-read state
       const emailsToUpsert = emails.map(({ read: _read, ...rest }) => ({ ...rest, user_id: userId }));
 
       const { error: upsertErr } = await supa
@@ -146,14 +137,33 @@ serve(async (req: Request) => {
       if (upsertErr) throw new Error("Errore salvataggio email: " + upsertErr.message);
       upserted = emails.length;
 
-      // If IMAP reports \\Seen, propagate that to the DB (false→true only, never true→false)
+      // Propagate \\Seen flag (false→true only, never overwrite local true→false)
       const seenIds = emails.filter(e => e.read).map(e => e.message_id);
       if (seenIds.length > 0) {
         await supa.from("emails").update({ read: true }).eq("user_id", userId).in("message_id", seenIds);
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, count: upserted }), {
+    // `done` is true when this batch reaches the oldest messages
+    const rangeStart = Math.max(1, total - offset - batchSize + 1);
+    const done = total === 0 || offset >= total || rangeStart === 1;
+
+    // Update job progress if a job_id was provided
+    if (jobId) {
+      const newSynced = offset + upserted;
+      const jobUpdate: Record<string, unknown> = {
+        synced_messages: newSynced,
+        total_messages: total,
+        updated_at: new Date().toISOString(),
+      };
+      if (done) {
+        jobUpdate.status = "completed";
+        jobUpdate.completed_at = new Date().toISOString();
+      }
+      await supa.from("email_sync_jobs").update(jobUpdate).eq("id", jobId).eq("user_id", userId);
+    }
+
+    return new Response(JSON.stringify({ ok: true, count: upserted, total, offset, done }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: unknown) {

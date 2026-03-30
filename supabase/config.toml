@@ -1,6 +1,9 @@
 [functions.google-calendar]
 verify_jwt = false
 
+[functions.outlook-calendar]
+verify_jwt = false
+
 [functions.imap-fetch]
 verify_jwt = false
 

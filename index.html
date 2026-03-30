@@ -449,6 +449,18 @@ textarea { resize: vertical; min-height: 78px; }
 .cw-select { width: 100%; padding: 9px 12px; background: var(--bg-elevated); border: 1px solid var(--border-md); border-radius: var(--radius-sm); color: var(--text); font-size: 13.5px; font-family: inherit; outline: none; cursor: pointer; transition: var(--transition); }
 .cw-select:focus { border-color: var(--primary); }
 .cw-select option { background: var(--bg-elevated); }
+.cw-target-selector { border: 1px solid var(--border-md); border-radius: var(--radius-sm); background: var(--bg-elevated); overflow: hidden; }
+.cw-target-toolbar { display: flex; gap: 6px; align-items: center; padding: 8px; border-bottom: 1px solid var(--border); }
+.cw-target-search { flex: 1; padding: 6px 10px; background: var(--bg-surface); border: 1px solid var(--border-md); border-radius: var(--radius-sm); color: var(--text); font-size: 13px; font-family: inherit; outline: none; }
+.cw-target-search:focus { border-color: var(--primary); }
+.cw-target-search::placeholder { color: var(--muted); }
+.cw-target-list { max-height: 220px; overflow-y: auto; }
+.cw-target-item { display: flex; align-items: center; gap: 9px; padding: 8px 12px; cursor: pointer; transition: background .1s; border-bottom: 1px solid var(--border); user-select: none; }
+.cw-target-item:last-child { border-bottom: none; }
+.cw-target-item:hover { background: var(--bg-hover); }
+.cw-target-item input[type=checkbox] { accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer; flex-shrink: 0; }
+.cw-target-item-label { font-size: 13.5px; color: var(--text); flex: 1; }
+.cw-target-count { font-size: 12px; color: var(--text-sec); padding: 7px 12px; border-top: 1px solid var(--border); }
 .cw-textarea { width: 100%; padding: 10px 12px; background: var(--bg-elevated); border: 1px solid var(--border-md); border-radius: var(--radius-sm); color: var(--text); font-size: 13.5px; font-family: inherit; line-height: 1.6; outline: none; resize: vertical; transition: var(--transition); }
 .cw-textarea:focus { border-color: var(--primary); }
 .cw-textarea::placeholder { color: var(--muted); }
@@ -819,6 +831,31 @@ textarea { resize: vertical; min-height: 78px; }
   .cal-view-btn { padding: 4px 7px; font-size: 11px; }
   .dash-eco-grid { grid-template-columns: 1fr; }
 }
+
+/* ── EMAIL SYNC GLOBAL BANNER ── */
+.email-sync-banner {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--bg-surface); border-top: 1px solid var(--border);
+  padding: 8px 20px; z-index: 900;
+  box-shadow: 0 -2px 14px rgba(0,0,0,.18);
+  transform: translateY(100%); transition: transform .3s ease;
+}
+.email-sync-banner.visible { transform: translateY(0); }
+.sync-banner-content { display: flex; align-items: center; gap: 12px; max-width: 860px; margin: 0 auto; }
+.sync-banner-icon { font-size: 16px; animation: spin 1.2s linear infinite; flex-shrink: 0; }
+.sync-banner-icon.done { animation: none; }
+.sync-banner-info { flex: 1; min-width: 0; }
+.sync-banner-label { font-size: 12px; font-weight: 500; color: var(--text); margin-bottom: 3px; display: flex; justify-content: space-between; }
+.sync-banner-bar { height: 5px; background: var(--bg-elevated); border-radius: 100px; overflow: hidden; }
+.sync-banner-bar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #a78bfa); border-radius: 100px; transition: width .4s ease; width: 0%; }
+.sync-stop-btn { background: none; border: 1px solid var(--border-md); border-radius: 6px; padding: 4px 9px; cursor: pointer; color: var(--muted); font-size: 12px; flex-shrink: 0; transition: var(--transition); }
+.sync-stop-btn:hover { background: var(--bg-elevated); color: var(--text); }
+
+/* ── EMAIL SIDEBAR SYNC PROGRESS ── */
+.email-sync-sidebar-progress { padding: 8px 12px 6px; border-top: 1px solid var(--border); }
+.email-sync-sidebar-label { font-size: 10.5px; color: var(--muted); display: flex; justify-content: space-between; margin-bottom: 3px; }
+.email-sync-sidebar-bar { height: 3px; background: var(--bg-hover, rgba(255,255,255,.05)); border-radius: 100px; overflow: hidden; }
+.email-sync-sidebar-fill { height: 100%; background: linear-gradient(90deg, var(--primary), #a78bfa); border-radius: 100px; transition: width .4s ease; width: 0%; }
 </style>
 </head>
 <body>
@@ -1125,6 +1162,21 @@ textarea { resize: vertical; min-height: 78px; }
 <!-- IN-APP NOTIFICATION BANNER (iPhone-style, slides from top) -->
 <div id="notifBannerWrap" class="notif-banner-wrap"></div>
 
+<!-- EMAIL SYNC GLOBAL BANNER (slides from bottom) -->
+<div id="emailSyncBanner" class="email-sync-banner">
+  <div class="sync-banner-content">
+    <span id="syncBannerIcon" class="sync-banner-icon">🔄</span>
+    <div class="sync-banner-info">
+      <div class="sync-banner-label">
+        <span id="syncBannerText">Sincronizzazione email in corso...</span>
+        <span id="syncBannerPct">0%</span>
+      </div>
+      <div class="sync-banner-bar"><div class="sync-banner-bar-fill" id="syncBannerFill"></div></div>
+    </div>
+    <button class="sync-stop-btn" id="syncStopBtn" onclick="stopEmailSync()">⏹ Ferma</button>
+  </div>
+</div>
+
 <!-- NOTIFICATION SIDEBAR BACKDROP -->
 <div class="notif-sidebar-backdrop" id="notifSidebarBackdrop" onclick="closeNotifSidebar()"></div>
 
@@ -1203,7 +1255,10 @@ let contactsPageSize = 100;
 
 // Calendar state
 let calendarEvents = [];
-let calendarConnected = false;
+let googleCalendarConnected = false;
+let outlookCalendarConnected = false;
+let calendarProvider = null; // 'google' | 'outlook' | null
+let calendarConnected = false; // true if any calendar is connected
 let currentCalDate = new Date();
 let calView = 'month';
 let calSelectedColor = '#7c5ef0';
@@ -1211,6 +1266,8 @@ let calEditingEvent = null; // null = create mode, object = edit mode
 let calEventsLoaded = false; // cache flag — skip reload on navigation
 // IMPORTANT: replace with your actual Google OAuth Client ID
 const GOOGLE_CLIENT_ID = '1039132871315-8c58atac9ujkgitiaqi6omr48pioj6rj.apps.googleusercontent.com';
+// IMPORTANT: replace with your actual Microsoft Azure App Client ID
+const MICROSOFT_CLIENT_ID = 'YOUR_MICROSOFT_CLIENT_ID';
 
 // ─────────────────────────────────────────────
 // AUTH
@@ -1274,13 +1331,17 @@ async function handleLogout() {
 // INIT
 // ─────────────────────────────────────────────
 async function init() {
-  // Handle Google Calendar OAuth callback (code in URL params)
+  // Handle Calendar OAuth callbacks (Google or Outlook) from URL params
   const urlParams = new URLSearchParams(window.location.search);
   const oauthCode = urlParams.get('code');
   const oauthState = urlParams.get('state');
   if (oauthCode && oauthState === 'calendar_auth') {
     history.replaceState({}, '', window.location.pathname);
     window._pendingCalendarCode = oauthCode;
+  }
+  if (oauthCode && oauthState === 'outlook_calendar_auth') {
+    history.replaceState({}, '', window.location.pathname);
+    window._pendingOutlookCode = oauthCode;
   }
 
   // Check existing session
@@ -1294,10 +1355,14 @@ async function init() {
   hideLoginScreen(session.user);
   await bootApp();
 
-  // Process pending calendar OAuth code now that user is authenticated
+  // Process pending calendar OAuth codes now that user is authenticated
   if (window._pendingCalendarCode) {
     await exchangeCalendarToken(window._pendingCalendarCode);
     delete window._pendingCalendarCode;
+  }
+  if (window._pendingOutlookCode) {
+    await exchangeOutlookToken(window._pendingOutlookCode);
+    delete window._pendingOutlookCode;
   }
 
   // Listen for session expiry
@@ -1321,6 +1386,7 @@ async function bootApp() {
 
   await Promise.all([loadContacts(), loadSmtpSettings()]);
   initNotifications(); // async, runs in background - no await needed
+  resumeEmailSyncIfPending(); // resume any sync interrupted by reload/re-login
 
   // Hide loader
   const loader = document.getElementById('loader');
@@ -2448,6 +2514,13 @@ async function initNotifications() {
   // Register service worker
   if ('serviceWorker' in navigator) {
     await navigator.serviceWorker.register('./sw.js').catch(() => {});
+    // Listen for SW messages (e.g. resume sync after background sync event)
+    navigator.serviceWorker.addEventListener('message', event => {
+      if (event.data?.type === 'RESUME_EMAIL_SYNC') {
+        const s = _getSyncState();
+        if (s && s.running && !window._syncBatchTimer) _scheduleNextSyncBatch(500);
+      }
+    });
   }
   // On desktop/Android: auto-request permission if still default
   // On iOS Safari we CANNOT ask without a user gesture — the settings card handles that
@@ -2686,7 +2759,7 @@ function renderNotifSidebar() {
   }
 
   el.innerHTML = notifs.map(n => {
-    const icon = n.type === 'event' ? '📅' : '⏰';
+    const icon = n.type === 'event' ? '📅' : n.type === 'sync' ? '🔄' : '⏰';
     const unreadClass = n.read ? '' : ' unread';
     const dot = n.read ? '' : `<div class="notif-item-dot"></div>`;
     return `<div class="notif-item${unreadClass}" onclick="markNotifRead('${n.id}')">` +
@@ -2880,9 +2953,9 @@ async function renderSettings() {
       <div class="settings-card">
         <div class="settings-card-icon">📅</div>
         <h3>Google Calendar</h3>
-        <p>Collega il tuo Google Calendar per sincronizzare appuntamenti e creare inviti direttamente dal CRM.</p>
+        <p>Collega il tuo Google Calendar per sincronizzare appuntamenti e creare inviti con Google Meet direttamente dal CRM.</p>
         <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          ${calendarConnected
+          ${googleCalendarConnected
             ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--success);font-weight:500">
                 <span style="width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);display:inline-block"></span>
                 Collegato
@@ -2893,6 +2966,26 @@ async function renderSettings() {
                 Non collegato
                </span>
                <button class="btn btn-primary btn-sm" onclick="connectGoogleCalendar()">Collega Google Calendar</button>`
+          }
+        </div>
+      </div>
+
+      <div class="settings-card">
+        <div class="settings-card-icon">📆</div>
+        <h3>Outlook Calendar</h3>
+        <p>Collega il tuo Outlook Calendar (Microsoft 365) per sincronizzare appuntamenti e creare riunioni Teams direttamente dal CRM.</p>
+        <div style="margin-top:14px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          ${outlookCalendarConnected
+            ? `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--success);font-weight:500">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--success);box-shadow:0 0 6px var(--success);display:inline-block"></span>
+                Collegato
+               </span>
+               <button class="btn btn-secondary btn-sm" onclick="disconnectOutlookCalendar()">Disconnetti</button>`
+            : `<span style="display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);font-weight:500">
+                <span style="width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block"></span>
+                Non collegato
+               </span>
+               <button class="btn btn-primary btn-sm" onclick="connectOutlookCalendar()">Collega Outlook Calendar</button>`
           }
         </div>
       </div>
@@ -3004,16 +3097,20 @@ async function renderEmail() {
   _renderEmailShell();
   await fetchEmails();
 
-  // Auto-sync every 60 seconds
-  if (window._emailSyncInterval) clearInterval(window._emailSyncInterval);
-  window._emailSyncInterval = setInterval(async () => {
-    if (currentView === 'email') {
-      await fetchEmails(true, true); // silent auto-sync from IMAP
-    } else {
-      clearInterval(window._emailSyncInterval);
-      window._emailSyncInterval = null;
-    }
-  }, 60000);
+  // Light incremental refresh every 90 seconds (only fetches newest 50, no full sync)
+  // Runs globally — not stopped when leaving email view
+  if (!window._emailRefreshInterval) {
+    window._emailRefreshInterval = setInterval(async () => {
+      // Skip if a full sync is running (it already fetches everything)
+      if (_getSyncState()?.running) return;
+      try {
+        await db.functions.invoke('imap-fetch', {
+          body: { folder: emailState.folder, offset: 0, batch_size: 50 }
+        });
+        if (currentView === 'email') fetchEmails(false, true);
+      } catch (_) {}
+    }, 90000);
+  }
 }
 
 function _renderEmailShell() {
@@ -3029,8 +3126,20 @@ function _renderEmailShell() {
           <span>📤</span><span>Inviata</span>
         </div>
         <div class="email-folders-label" style="margin-top:12px">Azioni</div>
-        <div class="email-folder-item" onclick="syncEmails()">
-          <span>🔄</span><span id="syncLabel">Sincronizza</span>
+        <div class="email-folder-item" id="syncEmailBtn" onclick="startEmailSync(emailState.folder)">
+          <span>🔄</span><span id="syncLabel">Sincronizza tutto</span>
+        </div>
+        <div class="email-folder-item" onclick="fetchEmails(true)" style="font-size:12px">
+          <span>⚡</span><span>Aggiorna recenti</span>
+        </div>
+        <div id="emailSyncSidebarProgress" class="email-sync-sidebar-progress hidden">
+          <div class="email-sync-sidebar-label">
+            <span id="sidebarSyncText">Sincronizzando...</span>
+            <span id="sidebarSyncPct">0%</span>
+          </div>
+          <div class="email-sync-sidebar-bar">
+            <div class="email-sync-sidebar-fill" id="sidebarSyncFill"></div>
+          </div>
         </div>
       </div>
       <div class="email-list-panel" id="emailListPanel">
@@ -3071,7 +3180,7 @@ async function fetchEmails(forceSync = false, silent = false) {
     .eq('user_id', currentUser.id)
     .eq('folder', emailState.folder)
     .order('date', { ascending: false })
-    .limit(50);
+    .limit(500);
 
   if (error) {
     listPanel.innerHTML = `<div class="empty"><div class="ei">⚠️</div><h3>Errore</h3><p>${escHtml(error.message)}</p><p style="font-size:12px;color:var(--muted);margin-top:8px">Assicurati che la tabella <code>emails</code> esista su Supabase.</p></div>`;
@@ -3247,11 +3356,226 @@ async function sendReply() {
   }
 }
 
+// ─────────────────────────────────────────────
+// EMAIL SYNC ENGINE — persists across navigation, reload, re-login
+// State is stored in localStorage so it survives page refresh.
+// The sync loop runs as a global setTimeout (not tied to any view).
+// A DB record in email_sync_jobs is created for each full sync so
+// it can be resumed after logout/re-login.
+// ─────────────────────────────────────────────
+
+function _syncKey() { return currentUser ? `crm_esync_${currentUser.id}` : null; }
+
+function _getSyncState() {
+  const k = _syncKey();
+  if (!k) return null;
+  try { return JSON.parse(localStorage.getItem(k) || 'null'); } catch { return null; }
+}
+
+function _saveSyncState(s) {
+  const k = _syncKey();
+  if (!k) return;
+  if (s) localStorage.setItem(k, JSON.stringify(s));
+  else localStorage.removeItem(k);
+}
+
+function _updateSyncUI() {
+  const s = _getSyncState();
+  const banner  = document.getElementById('emailSyncBanner');
+  const fill    = document.getElementById('syncBannerFill');
+  const pct     = document.getElementById('syncBannerPct');
+  const text    = document.getElementById('syncBannerText');
+  const icon    = document.getElementById('syncBannerIcon');
+  const stopBtn = document.getElementById('syncStopBtn');
+
+  // Sidebar elements (only present when in email view)
+  const sidebarProg = document.getElementById('emailSyncSidebarProgress');
+  const sidebarFill = document.getElementById('sidebarSyncFill');
+  const sidebarPct  = document.getElementById('sidebarSyncPct');
+  const sidebarText = document.getElementById('sidebarSyncText');
+  const syncLabel   = document.getElementById('syncLabel');
+
+  if (!s || !s.running) {
+    if (banner) banner.classList.remove('visible');
+    if (sidebarProg) sidebarProg.classList.add('hidden');
+    if (syncLabel) syncLabel.textContent = 'Sincronizza tutto';
+    return;
+  }
+
+  const pctVal = s.total > 0 ? Math.round((s.synced / s.total) * 100) : 0;
+  const label = s.total > 0
+    ? `Sync ${s.folder}: ${s.synced} / ${s.total} email (${pctVal}%)`
+    : `Sync ${s.folder}: connessione...`;
+
+  if (banner) banner.classList.add('visible');
+  if (fill)    fill.style.width = pctVal + '%';
+  if (pct)     pct.textContent  = pctVal + '%';
+  if (text)    text.textContent = label;
+  if (icon)    icon.className   = 'sync-banner-icon';
+  if (stopBtn) stopBtn.style.display = '';
+
+  if (sidebarProg) sidebarProg.classList.remove('hidden');
+  if (sidebarFill) sidebarFill.style.width = pctVal + '%';
+  if (sidebarPct)  sidebarPct.textContent  = pctVal + '%';
+  if (sidebarText) sidebarText.textContent = `${s.synced}/${s.total} email`;
+  if (syncLabel)   syncLabel.textContent   = '⏳ In corso...';
+}
+
+async function startEmailSync(folder) {
+  folder = folder || emailState.folder || 'INBOX';
+  const existing = _getSyncState();
+  if (existing && existing.running) {
+    toast('Sincronizzazione già in corso', 'ok');
+    return;
+  }
+
+  // Create a DB job so it can be resumed after re-login
+  let jobId = null;
+  try {
+    const { data: job } = await db.from('email_sync_jobs').insert({
+      user_id: currentUser.id,
+      folder,
+      status: 'running',
+      total_messages: 0,
+      synced_messages: 0,
+    }).select('id').single();
+    jobId = job?.id || null;
+  } catch (_) {}
+
+  _saveSyncState({ running: true, folder, total: 0, synced: 0, offset: 0, jobId, startedAt: Date.now() });
+  _updateSyncUI();
+
+  // Register background sync so browser can resume if connectivity drops
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.ready.then(reg => {
+      if (reg.sync) reg.sync.register('email-sync').catch(() => {});
+    });
+  }
+
+  // Add notification
+  _addSyncNotif('🔄 Sincronizzazione email avviata', `Cartella: ${folder}`);
+
+  _scheduleNextSyncBatch(0);
+}
+
+function _scheduleNextSyncBatch(delayMs) {
+  if (window._syncBatchTimer) clearTimeout(window._syncBatchTimer);
+  window._syncBatchTimer = setTimeout(_runSyncBatch, delayMs);
+}
+
+async function _runSyncBatch() {
+  const s = _getSyncState();
+  if (!s || !s.running) return;
+
+  try {
+    const { data: r, error } = await db.functions.invoke('imap-fetch', {
+      body: { folder: s.folder, offset: s.offset, batch_size: 50, job_id: s.jobId }
+    });
+
+    if (error) throw new Error(error.message);
+
+    const newSynced = s.synced + (r.count || 0);
+    const newOffset = s.offset + (r.count || 0);
+    const total     = r.total || s.total;
+    const done      = r.done || newOffset >= total;
+
+    if (done) {
+      _saveSyncState(null); // clear state
+      _updateSyncUI();
+      // Mark banner as completed briefly then hide
+      const banner = document.getElementById('emailSyncBanner');
+      const icon   = document.getElementById('syncBannerIcon');
+      const text   = document.getElementById('syncBannerText');
+      const fill   = document.getElementById('syncBannerFill');
+      const stop   = document.getElementById('syncStopBtn');
+      if (banner) banner.classList.add('visible');
+      if (icon)   { icon.textContent = '✅'; icon.className = 'sync-banner-icon done'; }
+      if (text)   text.textContent = `Sincronizzazione completata: ${newSynced} email`;
+      if (fill)   fill.style.width = '100%';
+      if (stop)   stop.style.display = 'none';
+      setTimeout(() => { if (banner) banner.classList.remove('visible'); }, 4000);
+
+      _addSyncNotif('✅ Sincronizzazione completata', `${newSynced} email sincronizzate in ${s.folder}`);
+
+      // Refresh email list if visible
+      if (currentView === 'email') fetchEmails(false, true);
+    } else {
+      _saveSyncState({ ...s, total, synced: newSynced, offset: newOffset });
+      _updateSyncUI();
+      _scheduleNextSyncBatch(800); // small pause between batches
+    }
+  } catch (e) {
+    const s2 = _getSyncState();
+    _saveSyncState(null);
+    _updateSyncUI();
+    const banner = document.getElementById('emailSyncBanner');
+    if (banner) banner.classList.remove('visible');
+    toast('Errore sync email: ' + e.message, 'err');
+    _addSyncNotif('⚠️ Errore sincronizzazione', e.message);
+    // Mark DB job as error
+    if (s2?.jobId) {
+      db.from('email_sync_jobs').update({ status: 'error', error_msg: e.message }).eq('id', s2.jobId).then(() => {});
+    }
+  }
+}
+
+function stopEmailSync() {
+  const s = _getSyncState();
+  if (!s) return;
+  if (window._syncBatchTimer) clearTimeout(window._syncBatchTimer);
+  // Mark DB job as stopped
+  if (s.jobId) {
+    db.from('email_sync_jobs').update({ status: 'stopped', synced_messages: s.synced, total_messages: s.total })
+      .eq('id', s.jobId).then(() => {});
+  }
+  _saveSyncState(null);
+  _updateSyncUI();
+  const banner = document.getElementById('emailSyncBanner');
+  if (banner) banner.classList.remove('visible');
+  toast('Sincronizzazione fermata', 'ok');
+  _addSyncNotif('⏹ Sincronizzazione fermata', `${s.synced} email sincronizzate su ${s.total}`);
+}
+
+function _addSyncNotif(title, body) {
+  const notifs = _loadNotifs();
+  notifs.push({
+    id: 'sync-' + Date.now(),
+    type: 'sync',
+    title,
+    body,
+    read: false,
+    shown: true,
+    createdAt: Date.now(),
+    fireAt: Date.now(),
+  });
+  const sevenDaysAgo = Date.now() - 7 * 24 * 3600 * 1000;
+  _saveNotifs(notifs.filter(n => n.createdAt > sevenDaysAgo));
+  updateNotifBadge();
+  renderNotifSidebar();
+}
+
+// Called at boot: resume any sync that was in progress before reload/logout
+async function resumeEmailSyncIfPending() {
+  const s = _getSyncState();
+  if (!s || !s.running) return;
+  // Validate the saved job still exists and is still running in DB
+  if (s.jobId) {
+    try {
+      const { data: job } = await db.from('email_sync_jobs').select('status').eq('id', s.jobId).single();
+      if (job && job.status !== 'running') {
+        _saveSyncState(null); // job was externally stopped/completed
+        return;
+      }
+    } catch (_) {}
+  }
+  toast('Ripresa sincronizzazione email...', 'ok');
+  _updateSyncUI();
+  _scheduleNextSyncBatch(2000);
+}
+
+// Legacy shim: kept so any old references still work
 async function syncEmails() {
-  const label = document.getElementById('syncLabel');
-  if (label) label.textContent = '⏳ Sincronizzando...';
-  await fetchEmails(true);
-  if (label) label.textContent = 'Sincronizza';
+  await startEmailSync(emailState.folder);
 }
 
 function emailSwitchFolder(folder) {
@@ -3388,12 +3712,22 @@ function renderCampaigns() {
       <div class="cw-q-card">
         <div class="cw-q-num">Domanda 2 di 8</div>
         <div class="cw-q-title">Quale target vuoi andare a colpire per questa campagna?</div>
-        <div class="cw-q-sub">Seleziona il ruolo dal tuo CRM — puoi scegliere una sola opzione</div>
-        <select class="cw-select" onchange="campaignDraft.target_ruolo=this.value" ${!ruoli.length ? 'disabled' : ''}>
-          <option value="">— Seleziona un ruolo —</option>
-          ${ruoloOptions}
-        </select>
-        ${!ruoli.length ? `<div style="margin-top:8px;font-size:12px;color:var(--warning)">⚠️ Nessun contatto ha un ruolo assegnato. <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openContactModal()">Aggiungi contatti con ruolo</span> oppure <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openImport()">importa un file</span>.</div>` : ''}
+        <div class="cw-q-sub">Seleziona uno o più ruoli dal tuo CRM — puoi sceglierli tutti, filtrare, o selezionare solo quelli che ti interessano</div>
+        ${ruoli.length ? `
+        <div class="cw-target-selector">
+          <div class="cw-target-toolbar">
+            <input type="text" class="cw-target-search" placeholder="🔍 Filtra per ruolo..." oninput="filterCampaignRoles(this.value)">
+            <button class="btn btn-secondary btn-sm" onclick="selectAllCampaignRoles(true)">Tutti</button>
+            <button class="btn btn-secondary btn-sm" onclick="selectAllCampaignRoles(false)">Nessuno</button>
+          </div>
+          <div class="cw-target-list">
+            ${ruoli.map(r => `<label class="cw-target-item" data-role="${escHtml(r)}">
+              <input type="checkbox" value="${escHtml(r)}" ${(campaignDraft.target_ruoli||[]).includes(r) ? 'checked' : ''} onchange="updateCampaignTargetRuoli()">
+              <span class="cw-target-item-label">${escHtml(r)}</span>
+            </label>`).join('')}
+          </div>
+          <div class="cw-target-count" id="cw_target_count">${(() => { const n=(campaignDraft.target_ruoli||[]).length; return n ? `${n} ruolo${n===1?'':'i'} selezionato${n===1?'':'i'}` : 'Nessun ruolo selezionato'; })()}</div>
+        </div>` : `<div style="margin-top:8px;font-size:12px;color:var(--warning)">⚠️ Nessun contatto ha un ruolo assegnato. <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openContactModal()">Aggiungi contatti con ruolo</span> oppure <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openImport()">importa un file</span>.</div>`}
       </div>
 
       <!-- Q3 -->
@@ -3474,11 +3808,35 @@ function updateCharCount(textareaId, counterId, max) {
   el.classList.toggle('warn', len > max * 0.9);
 }
 
+function filterCampaignRoles(query) {
+  const q = query.toLowerCase().trim();
+  document.querySelectorAll('.cw-target-item').forEach(el => {
+    el.style.display = (!q || el.dataset.role.toLowerCase().includes(q)) ? '' : 'none';
+  });
+}
+
+function selectAllCampaignRoles(all) {
+  document.querySelectorAll('.cw-target-item').forEach(el => {
+    if (el.style.display !== 'none') el.querySelector('input[type=checkbox]').checked = all;
+  });
+  updateCampaignTargetRuoli();
+}
+
+function updateCampaignTargetRuoli() {
+  const selected = [...document.querySelectorAll('.cw-target-item input[type=checkbox]:checked')].map(cb => cb.value);
+  campaignDraft.target_ruoli = selected;
+  const countEl = document.getElementById('cw_target_count');
+  if (countEl) {
+    const n = selected.length;
+    countEl.textContent = n ? `${n} ruolo${n===1?'':'i'} selezionato${n===1?'':'i'}` : 'Nessun ruolo selezionato';
+  }
+}
+
 function validateCampaignForm() {
   const d = campaignDraft;
   const missing = [];
-  if (!d.obiettivo)     missing.push('Obiettivo della campagna (Dom. 1)');
-  if (!d.target_ruolo)  missing.push('Target / ruolo (Dom. 2)');
+  if (!d.obiettivo)                    missing.push('Obiettivo della campagna (Dom. 1)');
+  if (!(d.target_ruoli||[]).length)    missing.push('Target / ruolo (Dom. 2)');
   if (!d.dipendenti)    missing.push('Numero dipendenti (Dom. 3)');
   if (!d.fatturato)     missing.push('Fatturato stimato (Dom. 4)');
   if (!(d.presentazione||'').trim()) missing.push('Chi sei (Dom. 5)');
@@ -3521,7 +3879,7 @@ async function generateEmailWithGroq() {
 
 CONTESTO:
 - Obiettivo: ${d.obiettivo}
-- Destinatario: ${d.target_ruolo} di aziende con ${d.dipendenti} dipendenti e fatturato ${d.fatturato}
+- Destinatario: ${(d.target_ruoli||[]).join(', ')} di aziende con ${d.dipendenti} dipendenti e fatturato ${d.fatturato}
 - Mittente: ${d.presentazione}
 - Prodotto/servizio: ${d.prodotto}
 - Punto di forza unico: ${d.forza}
@@ -3552,7 +3910,7 @@ REGOLE OBBLIGATORIE:
 - Lunghezza: 120-160 parole
 - Non inventare informazioni non fornite`;
 
-    const subjectPrompt = `Crea l'oggetto di una cold email in italiano (massimo 7 parole, senza virgolette) per un ${d.target_ruolo}. Obiettivo della email: ${d.obiettivo}. L'oggetto deve incuriosire, sembrare personale e rilevante, mai generico o pubblicitario. Rispondi solo con l'oggetto, nient'altro.`;
+    const subjectPrompt = `Crea l'oggetto di una cold email in italiano (massimo 7 parole, senza virgolette) per un ${(d.target_ruoli||[]).join('/')}. Obiettivo della email: ${d.obiettivo}. L'oggetto deve incuriosire, sembrare personale e rilevante, mai generico o pubblicitario. Rispondi solo con l'oggetto, nient'altro.`;
 
     const { data: groqData, error: groqErr } = await db.functions.invoke('groq-generate', {
       body: { bodyPrompt, subjectPrompt }
@@ -3562,7 +3920,7 @@ REGOLE OBBLIGATORIE:
     if (groqData?.error) throw new Error(groqData.error);
 
     campaignDraft.generatedEmail   = groqData.body;
-    campaignDraft.generatedSubject = groqData.subject || `Opportunità per ${d.target_ruolo}`;
+    campaignDraft.generatedSubject = groqData.subject || `Opportunità per ${(d.target_ruoli||[]).join('/')||'il tuo team'}`;
 
     renderCampaignEditor();
   } catch (e) {
@@ -3578,7 +3936,7 @@ function renderCampaignEditor() {
   const d = campaignDraft;
   const content = document.getElementById('content');
 
-  const targetContacts = contacts.filter(c => c.ruolo === d.target_ruolo);
+  const targetContacts = contacts.filter(c => (d.target_ruoli||[]).includes(c.ruolo));
   const contactsWithEmail = targetContacts.filter(c => c.email && c.email.trim()).length;
 
   const contactsHtml = targetContacts.length
@@ -3599,7 +3957,7 @@ function renderCampaignEditor() {
           ${emailBadge}${followupBadge}
         </label>`;
       }).join('')
-    : `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Nessun contatto con ruolo "${escHtml(d.target_ruolo)}"</div>`;
+    : `<div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Nessun contatto per i ruoli selezionati</div>`;
 
   content.innerHTML = `
     <div class="ce-container">
@@ -3635,7 +3993,7 @@ function renderCampaignEditor() {
         <div class="ce-panel">
           <div class="ce-panel-header">
             <div style="flex:1;min-width:0">
-              <div class="ce-panel-title">👥 Destinatari — <em>${escHtml(d.target_ruolo)}</em></div>
+              <div class="ce-panel-title">👥 Destinatari — <em>${escHtml((d.target_ruoli||[]).join(', '))}</em></div>
               <div class="ce-panel-sub" id="ce_selCount">${contactsWithEmail} contatt${contactsWithEmail === 1 ? 'o' : 'i'} con email</div>
             </div>
             <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
@@ -3753,7 +4111,7 @@ function renderCampaignDashboard() {
       <div class="cd-header">
         <div>
           <div class="cd-title">📊 Campagna Email</div>
-          <div style="font-size:13px;color:var(--text-sec);margin-top:3px">${escHtml(s.draft?.obiettivo||'')} · Target: <strong>${escHtml(s.draft?.target_ruolo||'')}</strong></div>
+          <div style="font-size:13px;color:var(--text-sec);margin-top:3px">${escHtml(s.draft?.obiettivo||'')} · Target: <strong>${escHtml((s.draft?.target_ruoli||[]).join(', '))}</strong></div>
         </div>
         <button id="cdNewCampaignBtn" class="btn btn-primary" onclick="startNewCampaign()" ${s.running ? 'disabled title="Campagna in corso — attendi il completamento"' : ''} style="${s.running ? 'opacity:0.4;cursor:not-allowed;' : ''}">＋ Nuova Campagna</button>
       </div>
@@ -3842,14 +4200,35 @@ function startNewCampaign() {
 }
 
 // ─────────────────────────────────────────────
-// GOOGLE CALENDAR
+// CALENDAR (Google + Outlook)
 // ─────────────────────────────────────────────
+
+// Returns the edge function name for the active provider
+function _calFn() {
+  return calendarProvider === 'outlook' ? 'outlook-calendar' : 'google-calendar';
+}
+
+// Picks the right function based on the event's own IDs (handles mixed-provider scenarios)
+function _calFnForEvent(ev) {
+  if (ev?.outlook_event_id) return 'outlook-calendar';
+  if (ev?.google_event_id) return 'google-calendar';
+  return _calFn();
+}
 
 async function checkCalendarStatus() {
   try {
-    const { data } = await db.functions.invoke('google-calendar', { body: { action: 'get_status' } });
-    calendarConnected = !!(data && data.connected);
-  } catch { calendarConnected = false; }
+    const [gRes, oRes] = await Promise.all([
+      db.functions.invoke('google-calendar', { body: { action: 'get_status' } }),
+      db.functions.invoke('outlook-calendar', { body: { action: 'get_status' } })
+    ]);
+    googleCalendarConnected = !!(gRes.data && gRes.data.connected);
+    outlookCalendarConnected = !!(oRes.data && oRes.data.connected);
+  } catch {
+    googleCalendarConnected = false;
+    outlookCalendarConnected = false;
+  }
+  calendarProvider = googleCalendarConnected ? 'google' : (outlookCalendarConnected ? 'outlook' : null);
+  calendarConnected = calendarProvider !== null;
   return calendarConnected;
 }
 
@@ -3871,6 +4250,22 @@ function connectGoogleCalendar() {
   window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params}`;
 }
 
+function connectOutlookCalendar() {
+  if (!MICROSOFT_CLIENT_ID || MICROSOFT_CLIENT_ID === 'YOUR_MICROSOFT_CLIENT_ID') {
+    toast('Configura prima il MICROSOFT_CLIENT_ID nelle impostazioni del codice', 'err');
+    return;
+  }
+  const redirectUri = window.location.origin + window.location.pathname;
+  const params = new URLSearchParams({
+    client_id: MICROSOFT_CLIENT_ID,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+    scope: 'Calendars.ReadWrite offline_access',
+    state: 'outlook_calendar_auth'
+  });
+  window.location.href = `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?${params}`;
+}
+
 async function exchangeCalendarToken(code) {
   const redirectUri = window.location.origin + window.location.pathname;
   try {
@@ -3879,38 +4274,70 @@ async function exchangeCalendarToken(code) {
     });
     if (error) {
       console.error('[Calendar] Supabase function error:', error);
-      console.error('[Calendar] error.context:', error.context);
-      // Try to extract the real error body from the response
       let detail = error.message;
       try {
         const body = await error.context?.json?.();
-        if (body) { console.error('[Calendar] error body:', body); detail = body.error || body.message || detail; }
+        if (body) { detail = body.error || body.message || detail; }
       } catch {}
       toast('Errore collegamento Google Calendar: ' + detail, 'err');
       return;
     }
     if (!data || !data.success) {
-      console.error('[Calendar] Token exchange failed:', data);
       toast('Errore collegamento Google Calendar: ' + (data?.error || 'risposta non valida'), 'err');
       return;
     }
+    googleCalendarConnected = true;
+    calendarProvider = 'google';
     calendarConnected = true;
     calEventsLoaded = false;
-    // Remove any "don't show" preference since calendar is now connected
     if (currentUser) localStorage.removeItem(`cal_hide_popup_${currentUser.id}`);
     toast('Google Calendar collegato ✓', 'ok');
     if (currentView === 'calendario') renderCalendar();
     if (currentView === 'settings') renderSettings();
   } catch (e) {
-    console.error('[Calendar] Exception:', e);
     toast('Errore collegamento Google Calendar: ' + (e?.message || e), 'err');
+  }
+}
+
+async function exchangeOutlookToken(code) {
+  const redirectUri = window.location.origin + window.location.pathname;
+  try {
+    const { data, error } = await db.functions.invoke('outlook-calendar', {
+      body: { action: 'exchange_token', code, redirect_uri: redirectUri }
+    });
+    if (error) {
+      console.error('[Outlook Calendar] Supabase function error:', error);
+      let detail = error.message;
+      try {
+        const body = await error.context?.json?.();
+        if (body) { detail = body.error || body.message || detail; }
+      } catch {}
+      toast('Errore collegamento Outlook Calendar: ' + detail, 'err');
+      return;
+    }
+    if (!data || !data.success) {
+      toast('Errore collegamento Outlook Calendar: ' + (data?.error || 'risposta non valida'), 'err');
+      return;
+    }
+    outlookCalendarConnected = true;
+    if (!calendarProvider) calendarProvider = 'outlook';
+    calendarConnected = true;
+    calEventsLoaded = false;
+    if (currentUser) localStorage.removeItem(`cal_hide_popup_${currentUser.id}`);
+    toast('Outlook Calendar collegato ✓', 'ok');
+    if (currentView === 'calendario') renderCalendar();
+    if (currentView === 'settings') renderSettings();
+  } catch (e) {
+    toast('Errore collegamento Outlook Calendar: ' + (e?.message || e), 'err');
   }
 }
 
 async function disconnectGoogleCalendar() {
   if (!confirm('Disconnettere Google Calendar?')) return;
   await db.functions.invoke('google-calendar', { body: { action: 'disconnect' } });
-  calendarConnected = false;
+  googleCalendarConnected = false;
+  calendarProvider = outlookCalendarConnected ? 'outlook' : null;
+  calendarConnected = calendarProvider !== null;
   calEventsLoaded = false;
   calendarEvents = [];
   toast('Google Calendar disconnesso', 'ok');
@@ -3918,9 +4345,22 @@ async function disconnectGoogleCalendar() {
   if (currentView === 'settings') renderSettings();
 }
 
+async function disconnectOutlookCalendar() {
+  if (!confirm('Disconnettere Outlook Calendar?')) return;
+  await db.functions.invoke('outlook-calendar', { body: { action: 'disconnect' } });
+  outlookCalendarConnected = false;
+  calendarProvider = googleCalendarConnected ? 'google' : null;
+  calendarConnected = calendarProvider !== null;
+  calEventsLoaded = false;
+  calendarEvents = [];
+  toast('Outlook Calendar disconnesso', 'ok');
+  if (currentView === 'calendario') renderCalendar();
+  if (currentView === 'settings') renderSettings();
+}
+
 async function loadCalendarEvents() {
   try {
-    const { data, error } = await db.functions.invoke('google-calendar', { body: { action: 'get_events' } });
+    const { data, error } = await db.functions.invoke(_calFn(), { body: { action: 'get_events' } });
     if (!error && data && data.events) calendarEvents = data.events;
   } catch { /* silently fail */ }
 }
@@ -4017,10 +4457,11 @@ function buildCalendarPageHTML() {
     <div class="cal-connect-banner">
       <div class="cal-connect-banner-icon">📅</div>
       <div class="cal-connect-banner-text">
-        <strong>Collega Google Calendar</strong>
+        <strong>Collega il tuo Calendario</strong>
         Sincronizza i tuoi appuntamenti e creane di nuovi direttamente dal CRM.
       </div>
-      <button class="btn btn-primary btn-sm" onclick="connectGoogleCalendar()">Collega</button>
+      <button class="btn btn-primary btn-sm" onclick="connectGoogleCalendar()">Google</button>
+      <button class="btn btn-secondary btn-sm" onclick="connectOutlookCalendar()">Outlook</button>
     </div>`;
 
   let grid;
@@ -4389,7 +4830,7 @@ async function saveCalendarEvent() {
   const saveBtn = document.getElementById('calSaveBtn');
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Creazione...'; }
 
-  const { data, error } = await db.functions.invoke('google-calendar', {
+  const { data, error } = await db.functions.invoke(_calFn(), {
     body: { action: 'create_event', title, start_time, end_time, guests, color: calSelectedColor, notes }
   });
 
@@ -4403,10 +4844,11 @@ async function saveCalendarEvent() {
   // Update local cache immediately
   if (data?.event) calendarEvents.push(data.event);
 
-  if (data?.google_error) {
-    toast('Evento salvato, errore Google sync: ' + data.google_error.slice(0, 100), 'err');
+  const syncError = data?.google_error || data?.outlook_error;
+  if (syncError) {
+    toast('Evento salvato, errore sync calendario: ' + syncError.slice(0, 100), 'err');
   } else {
-    toast(data?.synced_to_google ? 'Evento creato e sincronizzato ✓' : 'Evento creato ✓', 'ok');
+    toast(data?.synced_to_google || data?.synced_to_outlook ? 'Evento creato e sincronizzato ✓' : 'Evento creato ✓', 'ok');
   }
   closeCalEventModal();
   _renderCalendarGrid();
@@ -4421,14 +4863,19 @@ async function updateCalendarEvent() {
   if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '⏳ Salvataggio...'; }
 
   const ev = calEditingEvent;
+  const evFn = _calFnForEvent(ev);
+  const isOutlookEv = evFn === 'outlook-calendar';
   const body = {
     action: 'update_event',
     title, start_time, end_time, guests, color: calSelectedColor, notes,
-    event_id: ev.id && !ev.google_event_id ? ev.id : undefined,
-    google_event_id: ev.google_event_id || undefined,
+    event_id: ev.id && !(isOutlookEv ? ev.outlook_event_id : ev.google_event_id) ? ev.id : undefined,
+    ...(isOutlookEv
+      ? { outlook_event_id: ev.outlook_event_id || undefined }
+      : { google_event_id: ev.google_event_id || undefined }
+    ),
   };
 
-  const { data, error } = await db.functions.invoke('google-calendar', { body });
+  const { data, error } = await db.functions.invoke(evFn, { body });
 
   if (saveBtn) { saveBtn.disabled = false; saveBtn.textContent = '💾 Salva Modifiche'; }
 
@@ -4443,7 +4890,8 @@ async function updateCalendarEvent() {
     calendarEvents[idx] = { ...calendarEvents[idx], title, start_time, end_time, guests, color: calSelectedColor, notes };
   }
 
-  toast(data?.google_error ? 'Salvato localmente (errore Google sync)' : 'Evento aggiornato ✓', data?.google_error ? 'err' : 'ok');
+  const updateSyncErr = data?.google_error || data?.outlook_error;
+  toast(updateSyncErr ? 'Salvato localmente (errore sync calendario)' : 'Evento aggiornato ✓', updateSyncErr ? 'err' : 'ok');
   closeCalEventModal();
   _renderCalendarGrid();
 }
@@ -4456,13 +4904,18 @@ async function deleteCalendarEvent() {
   if (delBtn) { delBtn.disabled = true; delBtn.textContent = '⏳...'; }
 
   const ev = calEditingEvent;
+  const evFn = _calFnForEvent(ev);
+  const isOutlookEv = evFn === 'outlook-calendar';
   const body = {
     action: 'delete_event',
-    event_id: ev.id && !ev.google_event_id ? ev.id : undefined,
-    google_event_id: ev.google_event_id || undefined,
+    event_id: ev.id && !(isOutlookEv ? ev.outlook_event_id : ev.google_event_id) ? ev.id : undefined,
+    ...(isOutlookEv
+      ? { outlook_event_id: ev.outlook_event_id || undefined }
+      : { google_event_id: ev.google_event_id || undefined }
+    ),
   };
 
-  const { data, error } = await db.functions.invoke('google-calendar', { body });
+  const { data, error } = await db.functions.invoke(evFn, { body });
 
   if (delBtn) { delBtn.disabled = false; delBtn.textContent = '🗑 Elimina'; }
 
@@ -4501,15 +4954,18 @@ function showCallFissataPopupDisconnected(contact) {
     <div class="cf-popup-header">
       <div>
         <div class="cf-popup-title">📅 Call fissata con ${escHtml(name)}</div>
-        <div class="cf-popup-sub">Collega Google Calendar per schedulare automaticamente</div>
+        <div class="cf-popup-sub">Collega un calendario per schedulare automaticamente</div>
       </div>
       <button class="cf-popup-close" onclick="closeCallFissataPopup()">✕</button>
     </div>
     <div class="cf-not-connected">
       <div class="cf-not-connected-icon">🔗</div>
-      <div class="cf-not-connected-title">Google Calendar non collegato</div>
-      <div class="cf-not-connected-sub">Collega il tuo Google Calendar per creare inviti automaticamente e sincronizzare tutti i tuoi appuntamenti.</div>
-      <button class="btn btn-primary" onclick="connectGoogleCalendar()" style="margin:0 auto">Collega Google Calendar</button>
+      <div class="cf-not-connected-title">Calendario non collegato</div>
+      <div class="cf-not-connected-sub">Collega Google Calendar o Outlook per creare inviti automaticamente e sincronizzare i tuoi appuntamenti.</div>
+      <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="connectGoogleCalendar()">Google Calendar</button>
+        <button class="btn btn-secondary" onclick="connectOutlookCalendar()">Outlook Calendar</button>
+      </div>
     </div>
     <div class="cf-popup-footer">
       ${hideKey ? `<label class="cf-no-show"><input type="checkbox" onchange="if(this.checked)localStorage.setItem('${hideKey}','1')"> Non mostrare più (finché Calendar non è collegato)</label>` : ''}
