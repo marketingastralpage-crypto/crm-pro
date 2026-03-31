@@ -2933,6 +2933,11 @@ async function renderSettings() {
             <label>Porta IMAP</label>
             <input id="s_imap_porta" type="number" placeholder="es. 993" value="${s.imap_porta||''}">
           </div>
+          <div class="form-group">
+            <label>Cartella Posta Inviata</label>
+            <input id="s_imap_sent_folder" type="text" placeholder="es. Sent, Sent Items, [Gmail]/Sent Mail" value="${escHtml(s.imap_sent_folder||'')}">
+            <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block">Gmail: <code>[Gmail]/Sent Mail</code> · Outlook: <code>Sent Items</code> · Standard: <code>Sent</code></small>
+          </div>
         </div>
       </div>
 
@@ -3039,11 +3044,12 @@ async function saveSmtpSettings() {
 
   const imap_host        = document.getElementById('s_imap_host').value.trim();
   const imap_porta       = parseInt(document.getElementById('s_imap_porta').value) || null;
+  const imap_sent_folder = document.getElementById('s_imap_sent_folder').value.trim() || 'Sent';
   const mittente_nome    = document.getElementById('s_mittente_nome').value.trim();
   const mittente_cognome = document.getElementById('s_mittente_cognome').value.trim();
   const mittente_ruolo   = document.getElementById('s_mittente_ruolo').value.trim();
 
-  const payload = { user_email, password, host, porta, imap_host, imap_porta, mittente_nome, mittente_cognome, mittente_ruolo, updated_at: new Date().toISOString() };
+  const payload = { user_email, password, host, porta, imap_host, imap_porta, imap_sent_folder, mittente_nome, mittente_cognome, mittente_ruolo, updated_at: new Date().toISOString() };
   let error;
 
   if (smtpSettings?.id) {

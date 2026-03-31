@@ -56,10 +56,16 @@ serve(async (req: Request) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const folder: string    = body.folder     || "INBOX";
+    const logicalFolder: string = body.folder || "INBOX";
     const offset: number    = Math.max(0, Number(body.offset) || 0);
     const batchSize: number = Math.min(Math.max(1, Number(body.batch_size) || 50), 100);
     const jobId: string | null = body.job_id || null;
+
+    // Map logical folder name to actual IMAP folder name on the server.
+    // "INBOX" is standard; "SENT" varies by provider (Gmail, Outlook, etc.)
+    const realFolder = logicalFolder === "SENT"
+      ? (cfg.imap_sent_folder || "Sent")
+      : logicalFolder;
 
     const imapPort = cfg.imap_porta || 993;
     const client = new ImapFlow({
@@ -77,10 +83,10 @@ serve(async (req: Request) => {
     let total = 0;
 
     try {
-      const lock = await client.getMailboxLock(folder);
+      const lock = await client.getMailboxLock(realFolder);
       try {
         // deno-lint-ignore no-explicit-any
-        const status: any = await client.status(folder, { messages: true });
+        const status: any = await client.status(realFolder, { messages: true });
         total = status.messages ?? 0;
 
         if (total > 0 && offset < total) {
@@ -109,7 +115,7 @@ serve(async (req: Request) => {
                 to:          parsed.to?.text  || "",
                 subject:     parsed.subject   || "",
                 date:        (parsed.date || new Date()).toISOString(),
-                folder,
+                folder:      logicalFolder,   // always use logical name in DB ("INBOX"/"SENT")
                 // deno-lint-ignore no-explicit-any
                 read:        (msg.flags as any as Set<string>).has("\\Seen"),
                 text_body:   (parsed.text || "").slice(0, 8000),
