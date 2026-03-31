@@ -391,43 +391,76 @@ textarea { resize: vertical; min-height: 78px; }
 .btn-logout:hover { border-color: var(--border-lg); color: var(--text-sec); }
 
 /* ── EMAIL SECTION ── */
-.email-layout { display:flex; height:100%; min-height:400px; background:var(--bg-surface); border-radius:var(--radius-lg); border:1px solid var(--border); overflow:hidden; }
-.email-folders { width:196px; border-right:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0; overflow-y:auto; padding:10px 0; }
-.email-folders-label { padding:8px 16px 4px; font-size:10px; font-weight:600; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; }
-.email-folder-item { display:flex; align-items:center; gap:9px; padding:9px 14px; cursor:pointer; font-size:13px; color:var(--text-sec); transition:var(--transition); }
+.email-layout { display:flex; height:100%; min-height:400px; background:var(--bg-surface); overflow:hidden; }
+.email-folders { width:220px; border-right:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0; overflow-y:auto; padding:8px 0 16px; }
+.email-compose-btn { display:flex; align-items:center; gap:12px; margin:10px 14px 16px; padding:14px 22px; background:var(--bg-elevated); border:1px solid var(--border-md); border-radius:24px; cursor:pointer; font-size:14px; font-weight:600; color:var(--text); transition:var(--transition); box-shadow:0 1px 4px rgba(0,0,0,.2); user-select:none; }
+.email-compose-btn:hover { box-shadow:0 2px 10px rgba(0,0,0,.3); background:var(--bg-hover); }
+.email-folders-label { padding:10px 16px 4px; font-size:11px; font-weight:600; color:var(--muted); letter-spacing:1.2px; text-transform:uppercase; }
+.email-folder-item { display:flex; align-items:center; gap:12px; padding:9px 16px 9px 20px; cursor:pointer; font-size:14px; color:var(--text-sec); transition:var(--transition); border-radius:0 24px 24px 0; margin-right:14px; }
 .email-folder-item:hover { background:rgba(124,94,240,0.08); color:var(--text); }
-.email-folder-item.active { background:rgba(124,94,240,0.14); color:var(--primary-text); font-weight:600; }
-.email-unread-count { margin-left:auto; background:var(--primary); color:#fff; border-radius:12px; font-size:10px; padding:1px 7px; font-weight:700; }
-.email-list-panel { width:310px; flex-shrink:0; overflow-y:auto; border-right:1px solid var(--border); }
-.email-list-item { padding:12px 14px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; position:relative; }
-.email-list-item:hover { background:var(--bg-elevated); }
-.email-list-item.active { background:rgba(124,94,240,0.1); border-left:3px solid var(--primary); }
-.email-item-row1 { display:flex; align-items:baseline; gap:6px; margin-bottom:2px; }
-.email-item-from { font-size:13px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; color:var(--text-sec); }
+.email-folder-item.active { background:rgba(124,94,240,0.16); color:var(--primary-text); font-weight:600; }
+.email-unread-count { margin-left:auto; font-size:13px; font-weight:700; color:var(--text); }
+/* List panel */
+.email-list-panel { width:400px; flex-shrink:0; overflow:hidden; display:flex; flex-direction:column; border-right:1px solid var(--border); }
+.email-list-toolbar { display:flex; align-items:center; padding:0 8px; border-bottom:1px solid var(--border); flex-shrink:0; height:52px; gap:2px; }
+.email-toolbar-btn { width:32px; height:32px; border-radius:50%; border:none; background:none; cursor:pointer; color:var(--text-sec); display:flex; align-items:center; justify-content:center; font-size:15px; transition:var(--transition); font-family:inherit; }
+.email-toolbar-btn:hover { background:var(--bg-hover); color:var(--text); }
+.email-list-pagination { font-size:13px; color:var(--text-sec); display:flex; align-items:center; gap:2px; margin-left:auto; white-space:nowrap; }
+.email-page-btn { width:30px; height:30px; border-radius:50%; border:none; background:none; cursor:pointer; color:var(--text-sec); display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:600; transition:var(--transition); font-family:inherit; }
+.email-page-btn:hover:not(:disabled) { background:var(--bg-hover); color:var(--text); }
+.email-page-btn:disabled { opacity:0.3; cursor:not-allowed; }
+.email-list-scroll { flex:1; overflow-y:auto; }
+/* Gmail-style email rows */
+.email-list-item { display:flex; align-items:center; padding:0 16px 0 4px; height:56px; border-bottom:1px solid var(--border); cursor:pointer; transition:background .1s; position:relative; }
+.email-list-item:hover { box-shadow:inset 1px 0 0 var(--border-md),inset -1px 0 0 var(--border-md); z-index:1; }
+.email-list-item.active { background:rgba(124,94,240,0.09); }
+.email-list-item.unread { background:var(--bg-surface); }
+.email-list-item.read { background:var(--bg-elevated); }
+.email-list-item.unread:hover,.email-list-item.read:hover { background:var(--bg-hover); }
+.email-item-check { width:28px; flex-shrink:0; display:flex; align-items:center; justify-content:center; }
+.email-item-check input { width:14px; height:14px; cursor:pointer; accent-color:var(--primary); }
+.email-item-star { width:26px; flex-shrink:0; font-size:13px; display:flex; align-items:center; justify-content:center; opacity:0; cursor:pointer; transition:.1s; color:var(--muted); }
+.email-list-item:hover .email-item-star,.email-item-star.starred { opacity:1; }
+.email-item-from { width:145px; flex-shrink:0; font-size:13.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--text-sec); padding-right:6px; }
 .email-list-item.unread .email-item-from { font-weight:700; color:var(--text); }
-.email-item-date { font-size:10.5px; color:var(--muted); white-space:nowrap; flex-shrink:0; }
-.email-item-subject { font-size:12.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; color:var(--text-sec); }
+.email-item-body { flex:1; min-width:0; display:flex; align-items:baseline; overflow:hidden; }
+.email-item-subject { font-size:13.5px; color:var(--text-sec); white-space:nowrap; flex-shrink:0; max-width:45%; overflow:hidden; text-overflow:ellipsis; }
 .email-list-item.unread .email-item-subject { font-weight:600; color:var(--text); }
-.email-item-preview { font-size:11.5px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.email-item-sep { color:var(--muted); font-size:13px; flex-shrink:0; margin:0 5px; }
+.email-item-preview { font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1; min-width:0; }
+.email-item-date { font-size:12px; color:var(--muted); white-space:nowrap; flex-shrink:0; margin-left:8px; min-width:38px; text-align:right; }
+.email-list-item.unread .email-item-date { font-weight:600; color:var(--text-sec); }
+/* Detail panel */
 .email-detail-panel { flex:1; overflow-y:auto; display:flex; flex-direction:column; min-width:0; background:var(--bg-surface); }
 .email-no-select { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; color:var(--muted); gap:14px; font-size:14px; padding:40px; }
-.email-thread-header { padding:16px 22px 12px; border-bottom:1px solid var(--border); background:var(--bg-elevated); flex-shrink:0; position:sticky; top:0; z-index:2; }
-.email-thread-subject { font-size:17px; font-weight:700; margin-bottom:3px; letter-spacing:-0.04em; }
-.email-thread-meta { font-size:12px; color:var(--muted); }
-.email-message { padding:14px 22px; border-bottom:1px solid var(--border); }
-.email-message-header { display:flex; align-items:flex-start; gap:10px; margin-bottom:10px; }
-.email-message-avatar { width:36px; height:36px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:14px; flex-shrink:0; box-shadow:0 4px 10px var(--primary-glow); }
-.email-message-from { font-weight:600; font-size:13.5px; line-height:1.3; color:var(--text); }
-.email-message-to { font-size:11.5px; color:var(--text-sec); }
-.email-message-date { margin-left:auto; font-size:11.5px; color:var(--muted); white-space:nowrap; padding-left:10px; }
-.email-message-content { font-size:13.5px; line-height:1.7; overflow-wrap:break-word; color:var(--text-sec); }
+.email-detail-toolbar { display:flex; align-items:center; gap:2px; padding:0 10px; border-bottom:1px solid var(--border); flex-shrink:0; height:52px; }
+.email-thread-subject { font-size:22px; font-weight:400; padding:16px 24px 12px; letter-spacing:-0.01em; color:var(--text); }
+/* Messages */
+.email-message { border:1px solid var(--border); border-radius:var(--radius-md); margin:0 16px 6px; overflow:hidden; }
+.email-message-header { display:flex; align-items:center; gap:12px; padding:14px 16px; cursor:pointer; transition:background .1s; }
+.email-message-header:hover { background:var(--bg-elevated); }
+.email-message.collapsed .email-message-header { padding:10px 16px; }
+.email-message-avatar { width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:15px; flex-shrink:0; }
+.email-message-meta { flex:1; min-width:0; }
+.email-message-from { font-weight:600; font-size:14px; line-height:1.3; color:var(--text); }
+.email-message-to-short { font-size:12px; color:var(--muted); }
+.email-message.collapsed .email-message-to-short { display:none; }
+.email-message-snippet { display:none; font-size:13px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.email-message.collapsed .email-message-snippet { display:block; }
+.email-message-date { margin-left:auto; font-size:12px; color:var(--muted); white-space:nowrap; padding-left:10px; flex-shrink:0; }
+.email-message-hdr-actions { display:flex; gap:2px; flex-shrink:0; }
+.email-message-content { padding:8px 16px 16px 68px; font-size:14px; line-height:1.7; overflow-wrap:break-word; color:var(--text-sec); border-top:1px solid var(--border); }
+.email-message.collapsed .email-message-content { display:none; }
 .email-message-body { white-space:pre-wrap; font-family:inherit; }
 .email-html-frame { width:100%; border:none; min-height:60px; display:block; background:#fff; border-radius:var(--radius-sm); }
-.email-reply-box { margin:14px 22px 22px; border:1px solid var(--border-md); border-radius:var(--radius-md); overflow:hidden; box-shadow:var(--shadow-sm); flex-shrink:0; }
-.email-reply-header { padding:9px 14px; background:var(--bg-elevated); border-bottom:1px solid var(--border); font-size:12px; color:var(--muted); }
-.email-reply-textarea { width:100%; border:none; outline:none; padding:12px 14px; font-size:13.5px; min-height:110px; resize:vertical; font-family:inherit; line-height:1.6; display:block; background:var(--bg-surface); color:var(--text); }
+/* Reply box */
+.email-reply-wrap { margin:8px 16px 24px; flex-shrink:0; }
+.email-reply-box { border:1px solid var(--border-md); border-radius:var(--radius-md); overflow:hidden; box-shadow:0 2px 6px rgba(0,0,0,.15); background:var(--bg-surface); }
+.email-reply-to-bar { padding:10px 16px; font-size:13px; border-bottom:1px solid var(--border); display:flex; gap:6px; color:var(--text); }
+.email-reply-to-label { color:var(--muted); flex-shrink:0; }
+.email-reply-textarea { width:100%; border:none; outline:none; padding:14px 16px; font-size:14px; min-height:120px; resize:none; font-family:inherit; line-height:1.6; display:block; background:var(--bg-surface); color:var(--text); box-sizing:border-box; }
 .email-reply-textarea::placeholder { color:var(--muted); }
-.email-reply-footer { padding:9px 14px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; background:var(--bg-elevated); gap:12px; }
+.email-reply-footer { padding:10px 16px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; background:var(--bg-elevated); }
 .email-reply-from { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
 
 /* ── CAMPAIGNS WIZARD ── */
@@ -741,10 +774,13 @@ textarea { resize: vertical; min-height: 78px; }
     display: flex; flex-direction: row; overflow-x: auto; padding: 0;
     height: auto; flex-shrink: 0;
   }
+  .email-compose-btn { display: none; }
   .email-folders-label { display: none; }
-  .email-folder-item { white-space: nowrap; flex-shrink: 0; padding: 10px 16px; border-right: 1px solid var(--border); }
-  .email-list-panel { width: 100%; flex-shrink: 0; border-right: none; max-height: 50vh; overflow-y: auto; }
+  .email-folder-item { white-space: nowrap; flex-shrink: 0; padding: 10px 16px; border-right: 1px solid var(--border); border-radius: 0; margin-right: 0; }
+  .email-list-panel { width: 100%; flex-shrink: 0; border-right: none; max-height: 50vh; overflow: hidden; }
   .email-detail-panel { border-top: 1px solid var(--border); min-height: 250px; }
+  .email-item-from { width: 120px; }
+  .email-item-check, .email-item-star { display: none; }
 
   /* CALENDAR */
   .cal-toolbar { gap: 6px; }
@@ -3073,7 +3109,7 @@ function escHtml(str) {
 // ─────────────────────────────────────────────
 // EMAIL
 // ─────────────────────────────────────────────
-let emailState = { folder: 'INBOX', emails: [], selectedId: null, replyContext: null };
+let emailState = { folder: 'INBOX', emails: [], selectedId: null, replyContext: null, page: 0 };
 
 function isEmailConfigured() {
   return !!(smtpSettings && smtpSettings.host && smtpSettings.imap_host && smtpSettings.user_email);
@@ -3123,19 +3159,23 @@ function _renderEmailShell() {
   document.getElementById('content').innerHTML = `
     <div class="email-layout" id="emailLayout">
       <div class="email-folders">
+        <div class="email-compose-btn" onclick="alert('Funzione di composizione in arrivo')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+          Scrivi
+        </div>
         <div class="email-folders-label">Cartelle</div>
         <div class="email-folder-item active" id="efolder-INBOX" onclick="emailSwitchFolder('INBOX')">
-          <span>📥</span><span>Posta in arrivo</span>
+          <span>📥</span><span style="flex:1">Posta in arrivo</span>
           <span class="email-unread-count hidden" id="ecount-INBOX">0</span>
         </div>
         <div class="email-folder-item" id="efolder-SENT" onclick="emailSwitchFolder('SENT')">
           <span>📤</span><span>Inviata</span>
         </div>
-        <div class="email-folders-label" style="margin-top:12px">Azioni</div>
+        <div class="email-folders-label" style="margin-top:8px">Azioni</div>
         <div class="email-folder-item" id="syncEmailBtn" onclick="startEmailSync(emailState.folder)">
           <span>🔄</span><span id="syncLabel">Sincronizza tutto</span>
         </div>
-        <div class="email-folder-item" onclick="fetchEmails(true)" style="font-size:12px">
+        <div class="email-folder-item" onclick="fetchEmails(true)">
           <span>⚡</span><span>Aggiorna recenti</span>
         </div>
         <div id="emailSyncSidebarProgress" class="email-sync-sidebar-progress hidden">
@@ -3148,8 +3188,14 @@ function _renderEmailShell() {
           </div>
         </div>
       </div>
-      <div class="email-list-panel" id="emailListPanel">
-        <div class="loading-wrap"><div class="spinner"></div></div>
+      <div class="email-list-panel">
+        <div class="email-list-toolbar">
+          <button class="email-toolbar-btn" title="Aggiorna" onclick="fetchEmails(true)" style="font-size:18px;font-weight:400">↻</button>
+          <div id="emailPagination" class="email-list-pagination"></div>
+        </div>
+        <div class="email-list-scroll" id="emailListPanel">
+          <div class="loading-wrap"><div class="spinner"></div></div>
+        </div>
       </div>
       <div class="email-detail-panel" id="emailDetailPanel">
         <div class="email-no-select">
@@ -3194,6 +3240,7 @@ async function fetchEmails(forceSync = false, silent = false) {
   }
 
   emailState.emails = data || [];
+  emailState.page = 0;
 
   // When loading INBOX, update contacts to Alta if they sent us an email (they replied)
   if (emailState.folder === 'INBOX' && emailState.emails.length) {
@@ -3221,6 +3268,7 @@ function _renderEmailList() {
       <h3>Nessuna email</h3>
       <p style="font-size:13px">Clicca "Sincronizza" per caricare le email dal server IMAP</p>
     </div>`;
+    _renderEmailPagination();
     return;
   }
 
@@ -3228,21 +3276,53 @@ function _renderEmailList() {
   const cntEl = document.getElementById('ecount-INBOX');
   if (cntEl) { cntEl.textContent = unread; cntEl.classList.toggle('hidden', !unread); }
 
-  panel.innerHTML = emailState.emails.map(e => {
+  const pageSize = 50;
+  const page = emailState.page || 0;
+  const start = page * pageSize;
+  const pageEmails = emailState.emails.slice(start, start + pageSize);
+
+  panel.innerHTML = pageEmails.map(e => {
     const from = escHtml(e.from_name || e.from_email || '—');
     const subj = escHtml(e.subject || '(Nessun oggetto)');
-    const preview = escHtml((e.text_body || '').replace(/\s+/g, ' ').trim().slice(0, 80));
+    const preview = escHtml((e.text_body || '').replace(/\s+/g, ' ').trim().slice(0, 100));
     const isActive = emailState.selectedId === e.id;
-    return `<div class="email-list-item${!e.read ? ' unread' : ''}${isActive ? ' active' : ''}"
-             onclick="openEmail('${e.id}')">
-      <div class="email-item-row1">
-        <div class="email-item-from">${from}</div>
-        <div class="email-item-date">${fmtEmailDate(e.date)}</div>
+    const readClass = e.read ? 'read' : 'unread';
+    return `<div class="email-list-item ${readClass}${isActive ? ' active' : ''}" onclick="openEmail('${e.id}')">
+      <div class="email-item-check" onclick="event.stopPropagation()"><input type="checkbox"></div>
+      <div class="email-item-star">☆</div>
+      <div class="email-item-from">${from}</div>
+      <div class="email-item-body">
+        <span class="email-item-subject">${subj}</span>
+        <span class="email-item-sep">—</span>
+        <span class="email-item-preview">${preview}</span>
       </div>
-      <div class="email-item-subject">${subj}</div>
-      <div class="email-item-preview">${preview || '&nbsp;'}</div>
+      <div class="email-item-date">${fmtEmailDate(e.date)}</div>
     </div>`;
   }).join('');
+
+  _renderEmailPagination();
+}
+
+function _renderEmailPagination() {
+  const pag = document.getElementById('emailPagination');
+  if (!pag) return;
+  const page = emailState.page || 0;
+  const pageSize = 50;
+  const total = emailState.emails.length;
+  if (!total) { pag.innerHTML = ''; return; }
+  const start = page * pageSize + 1;
+  const end = Math.min((page + 1) * pageSize, total);
+  pag.innerHTML = `<span>${start}–${end} di ${total}</span>
+    <button class="email-page-btn" title="Pagina precedente" onclick="emailChangePage(-1)" ${page === 0 ? 'disabled' : ''}>&#8249;</button>
+    <button class="email-page-btn" title="Pagina successiva" onclick="emailChangePage(1)" ${end >= total ? 'disabled' : ''}>&#8250;</button>`;
+}
+
+function emailChangePage(delta) {
+  const pageSize = 50;
+  const maxPage = Math.floor((emailState.emails.length - 1) / pageSize);
+  emailState.page = Math.max(0, Math.min((emailState.page || 0) + delta, maxPage));
+  document.getElementById('emailListPanel').scrollTop = 0;
+  _renderEmailList();
 }
 
 async function openEmail(id) {
@@ -3293,44 +3373,61 @@ function _renderEmailDetail(messages) {
 
   const subj = messages[messages.length - 1]?.subject || '';
   const rc = emailState.replyContext;
-  const replySubj = subj.startsWith('Re:') ? subj : 'Re: ' + subj;
 
-  const msgsHtml = messages.map(m => {
+  const msgsHtml = messages.map((m, i) => {
+    const isLast = i === messages.length - 1;
     const fromName = m.from_name || m.from_email || m.from || '—';
     const initChar = escHtml((fromName[0] || '?').toUpperCase());
+    const snippet = escHtml((m.text_body || '').replace(/\s+/g, ' ').trim().slice(0, 80));
     const bodyContent = m.html_body
       ? `<iframe srcdoc="${escHtml(m.html_body)}" class="email-html-frame" onload="this.style.height=(this.contentDocument.body.scrollHeight+20)+'px'"></iframe>`
       : `<pre class="email-message-body">${escHtml(m.text_body || m.body || '(Corpo vuoto)')}</pre>`;
-    return `<div class="email-message">
-      <div class="email-message-header">
+    const collapsedClass = isLast ? '' : ' collapsed';
+    return `<div class="email-message${collapsedClass}" id="emsg-${m.id}">
+      <div class="email-message-header" onclick="toggleEmailMessage('${m.id}')">
         <div class="email-message-avatar">${initChar}</div>
-        <div style="min-width:0;flex:1">
+        <div class="email-message-meta">
           <div class="email-message-from">${escHtml(fromName)}</div>
-          <div class="email-message-to">A: ${escHtml(m.to || '')}</div>
+          <div class="email-message-to-short">a: ${escHtml(m.to || 'me')}</div>
+          <div class="email-message-snippet">${snippet}</div>
         </div>
         <div class="email-message-date">${fmtEmailDateFull(m.date)}</div>
+        <div class="email-message-hdr-actions">
+          <button class="email-toolbar-btn" title="Rispondi" onclick="event.stopPropagation()" style="font-size:14px">↩</button>
+        </div>
       </div>
       <div class="email-message-content">${bodyContent}</div>
     </div>`;
   }).join('');
 
   panel.innerHTML = `
-    <div class="email-thread-header">
-      <div class="email-thread-subject">${escHtml(subj || '(Nessun oggetto)')}</div>
-      <div class="email-thread-meta">${messages.length} messaggio${messages.length !== 1 ? 'i nel thread' : ''}</div>
+    <div class="email-detail-toolbar">
+      <button class="email-toolbar-btn" title="Archivia" style="font-size:14px">🗃️</button>
+      <button class="email-toolbar-btn" title="Spam" style="font-size:14px">⚠️</button>
+      <button class="email-toolbar-btn" title="Elimina" style="font-size:14px">🗑️</button>
+      <div style="width:1px;height:22px;background:var(--border);margin:0 4px"></div>
+      <button class="email-toolbar-btn" title="Segna come non letto" style="font-size:14px">✉️</button>
     </div>
-    <div>${msgsHtml}</div>
-    <div class="email-reply-box">
-      <div class="email-reply-header">
-        ↩️ Rispondi a <strong>${escHtml(rc?.to || '')}</strong>
-        &nbsp;·&nbsp; Oggetto: <em>${escHtml(replySubj)}</em>
-      </div>
-      <textarea class="email-reply-textarea" id="replyBody" placeholder="Scrivi qui la tua risposta..."></textarea>
-      <div class="email-reply-footer">
-        <span class="email-reply-from">Da: ${escHtml(smtpSettings?.user_email || '')}</span>
-        <button class="btn btn-primary btn-sm" id="sendReplyBtn" onclick="sendReply()">✈️ Invia Risposta</button>
+    <div class="email-thread-subject">${escHtml(subj || '(Nessun oggetto)')}</div>
+    <div style="padding:0 0 8px">${msgsHtml}</div>
+    <div class="email-reply-wrap">
+      <div class="email-reply-box">
+        <div class="email-reply-to-bar">
+          <span class="email-reply-to-label">A:</span>
+          <span>${escHtml(rc?.to || '')}</span>
+        </div>
+        <textarea class="email-reply-textarea" id="replyBody" placeholder="Scrivi una risposta..."></textarea>
+        <div class="email-reply-footer">
+          <span class="email-reply-from">Da: ${escHtml(smtpSettings?.user_email || '')}</span>
+          <button class="btn btn-primary btn-sm" id="sendReplyBtn" onclick="sendReply()">Invia</button>
+        </div>
       </div>
     </div>`;
+}
+
+function toggleEmailMessage(id) {
+  const el = document.getElementById('emsg-' + id);
+  if (el) el.classList.toggle('collapsed');
 }
 
 async function sendReply() {
@@ -3588,6 +3685,7 @@ function emailSwitchFolder(folder) {
   emailState.folder = folder;
   emailState.selectedId = null;
   emailState.replyContext = null;
+  emailState.page = 0;
   document.querySelectorAll('.email-folder-item[id^="efolder-"]').forEach(el => el.classList.remove('active'));
   const el = document.getElementById('efolder-' + folder);
   if (el) el.classList.add('active');
