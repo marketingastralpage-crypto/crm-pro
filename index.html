@@ -463,6 +463,25 @@ textarea { resize: vertical; min-height: 78px; }
 .email-reply-footer { padding:10px 16px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; background:var(--bg-elevated); }
 .email-reply-from { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
 
+/* ── EMAIL COMPOSE MODAL ── */
+.compose-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:900; display:flex; align-items:flex-end; justify-content:flex-end; padding:0 24px 24px 0; pointer-events:none; opacity:0; transition:opacity .2s; }
+.compose-modal-overlay.open { opacity:1; pointer-events:auto; }
+.compose-modal { width:540px; max-width:calc(100vw - 32px); background:var(--bg-surface); border-radius:var(--radius-lg); box-shadow:0 8px 40px rgba(0,0,0,.5); display:flex; flex-direction:column; overflow:hidden; transform:translateY(24px); transition:transform .2s; }
+.compose-modal-overlay.open .compose-modal { transform:translateY(0); }
+.compose-modal-header { display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:var(--bg-elevated); font-size:14px; font-weight:600; color:var(--text); flex-shrink:0; }
+.compose-modal-close { width:28px; height:28px; border-radius:50%; border:none; background:none; cursor:pointer; color:var(--text-sec); font-size:16px; display:flex; align-items:center; justify-content:center; transition:var(--transition); }
+.compose-modal-close:hover { background:var(--bg-hover); color:var(--text); }
+.compose-field { border-bottom:1px solid var(--border); display:flex; align-items:center; padding:0 16px; min-height:40px; }
+.compose-field-label { font-size:12px; color:var(--muted); width:36px; flex-shrink:0; }
+.compose-field input { flex:1; border:none; outline:none; background:transparent; font-size:13.5px; color:var(--text); font-family:inherit; padding:8px 0; }
+.compose-field input::placeholder { color:var(--muted); }
+.compose-body-area { flex:1; display:flex; flex-direction:column; }
+.compose-body-area textarea { flex:1; border:none; outline:none; padding:14px 16px; font-size:14px; min-height:200px; resize:none; font-family:inherit; line-height:1.6; background:var(--bg-surface); color:var(--text); box-sizing:border-box; }
+.compose-body-area textarea::placeholder { color:var(--muted); }
+.compose-footer { padding:10px 16px; border-top:1px solid var(--border); display:flex; align-items:center; gap:10px; background:var(--bg-elevated); flex-shrink:0; }
+.compose-from { font-size:12px; color:var(--muted); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+.email-item-star.starred { color:#f5a623; }
+
 /* ── CAMPAIGNS WIZARD ── */
 .cw-container { max-width: 720px; margin: 0 auto; padding-bottom: 48px; }
 .cw-header-block { margin-bottom: 24px; }
@@ -3143,8 +3162,9 @@ async function renderEmail() {
   // Runs globally — not stopped when leaving email view
   if (!window._emailRefreshInterval) {
     window._emailRefreshInterval = setInterval(async () => {
-      // Skip if a full sync is running (it already fetches everything)
+      // Skip if a full sync is running, or if on a virtual folder
       if (_getSyncState()?.running) return;
+      if (['ARCHIVE', 'SPAM', 'TRASH', 'STARRED'].includes(emailState.folder)) return;
       try {
         await db.functions.invoke('imap-fetch', {
           body: { folder: emailState.folder, offset: 0, batch_size: 50 }
@@ -3159,7 +3179,7 @@ function _renderEmailShell() {
   document.getElementById('content').innerHTML = `
     <div class="email-layout" id="emailLayout">
       <div class="email-folders">
-        <div class="email-compose-btn" onclick="alert('Funzione di composizione in arrivo')">
+        <div class="email-compose-btn" onclick="openComposeModal()">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
           Scrivi
         </div>
@@ -3170,6 +3190,18 @@ function _renderEmailShell() {
         </div>
         <div class="email-folder-item" id="efolder-SENT" onclick="emailSwitchFolder('SENT')">
           <span>📤</span><span>Inviata</span>
+        </div>
+        <div class="email-folder-item" id="efolder-STARRED" onclick="emailSwitchFolder('STARRED')">
+          <span>⭐</span><span>Speciali</span>
+        </div>
+        <div class="email-folder-item" id="efolder-ARCHIVE" onclick="emailSwitchFolder('ARCHIVE')">
+          <span>🗃️</span><span>Archivio</span>
+        </div>
+        <div class="email-folder-item" id="efolder-SPAM" onclick="emailSwitchFolder('SPAM')">
+          <span>⚠️</span><span>Spam</span>
+        </div>
+        <div class="email-folder-item" id="efolder-TRASH" onclick="emailSwitchFolder('TRASH')">
+          <span>🗑️</span><span>Cestino</span>
         </div>
         <div class="email-folders-label" style="margin-top:8px">Azioni</div>
         <div class="email-folder-item" id="syncEmailBtn" onclick="startEmailSync(emailState.folder)">
@@ -3211,7 +3243,11 @@ async function fetchEmails(forceSync = false, silent = false) {
   if (!listPanel) return;
   if (!silent) listPanel.innerHTML = '<div class="loading-wrap"><div class="spinner"></div></div>';
 
-  if (forceSync) {
+  // Virtual folders (ARCHIVE, SPAM, TRASH, STARRED) don't have real IMAP counterparts
+  const virtualFolders = ['ARCHIVE', 'SPAM', 'TRASH', 'STARRED'];
+  const isVirtualFolder = virtualFolders.includes(emailState.folder);
+
+  if (forceSync && !isVirtualFolder) {
     try {
       const { data: r, error: fnErr } = await db.functions.invoke('imap-fetch', {
         body: { folder: emailState.folder }
@@ -3226,13 +3262,32 @@ async function fetchEmails(forceSync = false, silent = false) {
     }
   }
 
-  const { data, error } = await db
+  let query = db
     .from('emails')
-    .select('id, message_id, thread_id, from_name, from_email, to, subject, date, folder, read, text_body')
+    .select('id, message_id, thread_id, from_name, from_email, to, subject, date, folder, read, starred, archived, spam, deleted_at, text_body')
     .eq('user_id', currentUser.id)
-    .eq('folder', emailState.folder)
     .order('date', { ascending: false })
     .limit(500);
+
+  // Apply folder-specific filters
+  if (emailState.folder === 'STARRED') {
+    query = query.eq('starred', true).is('deleted_at', null);
+  } else if (emailState.folder === 'ARCHIVE') {
+    query = query.eq('archived', true).is('deleted_at', null);
+  } else if (emailState.folder === 'SPAM') {
+    query = query.eq('spam', true).is('deleted_at', null);
+  } else if (emailState.folder === 'TRASH') {
+    query = query.not('deleted_at', 'is', null);
+  } else {
+    // Real IMAP folders: exclude archived, spam, and deleted
+    query = query
+      .eq('folder', emailState.folder)
+      .eq('archived', false)
+      .eq('spam', false)
+      .is('deleted_at', null);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     listPanel.innerHTML = `<div class="empty"><div class="ei">⚠️</div><h3>Errore</h3><p>${escHtml(error.message)}</p><p style="font-size:12px;color:var(--muted);margin-top:8px">Assicurati che la tabella <code>emails</code> esista su Supabase.</p></div>`;
@@ -3289,7 +3344,7 @@ function _renderEmailList() {
     const readClass = e.read ? 'read' : 'unread';
     return `<div class="email-list-item ${readClass}${isActive ? ' active' : ''}" onclick="openEmail('${e.id}')">
       <div class="email-item-check" onclick="event.stopPropagation()"><input type="checkbox"></div>
-      <div class="email-item-star">☆</div>
+      <div class="email-item-star${e.starred ? ' starred' : ''}" onclick="event.stopPropagation();toggleEmailStar('${e.id}')" title="${e.starred ? 'Rimuovi stella' : 'Aggiungi stella'}">${e.starred ? '★' : '☆'}</div>
       <div class="email-item-from">${from}</div>
       <div class="email-item-body">
         <span class="email-item-subject">${subj}</span>
@@ -3400,13 +3455,15 @@ function _renderEmailDetail(messages) {
     </div>`;
   }).join('');
 
+  const currentEmail = emailState.emails.find(e => e.id === emailState.selectedId);
+  const isRead = currentEmail?.read !== false;
   panel.innerHTML = `
     <div class="email-detail-toolbar">
-      <button class="email-toolbar-btn" title="Archivia" style="font-size:14px">🗃️</button>
-      <button class="email-toolbar-btn" title="Spam" style="font-size:14px">⚠️</button>
-      <button class="email-toolbar-btn" title="Elimina" style="font-size:14px">🗑️</button>
+      <button class="email-toolbar-btn" title="Archivia" onclick="emailAction('archive')" style="font-size:14px">🗃️</button>
+      <button class="email-toolbar-btn" title="Segnala spam" onclick="emailAction('spam')" style="font-size:14px">⚠️</button>
+      <button class="email-toolbar-btn" title="Sposta nel cestino" onclick="emailAction('trash')" style="font-size:14px">🗑️</button>
       <div style="width:1px;height:22px;background:var(--border);margin:0 4px"></div>
-      <button class="email-toolbar-btn" title="Segna come non letto" style="font-size:14px">✉️</button>
+      <button class="email-toolbar-btn" data-action="toggle-read" title="${isRead ? 'Segna come non letto' : 'Segna come letto'}" onclick="emailToggleRead()" style="font-size:14px">${isRead ? '✉️' : '📩'}</button>
     </div>
     <div class="email-thread-subject">${escHtml(subj || '(Nessun oggetto)')}</div>
     <div style="padding:0 0 8px">${msgsHtml}</div>
@@ -3457,6 +3514,110 @@ async function sendReply() {
   } finally {
     if (btn) { btn.disabled = false; btn.textContent = '✈️ Invia Risposta'; }
   }
+}
+
+// ─────────────────────────────────────────────
+// EMAIL ACTIONS — compose, star, archive, spam, trash, mark read/unread
+// ─────────────────────────────────────────────
+
+function openComposeModal(prefillTo) {
+  const overlay = document.getElementById('composeModal');
+  if (!overlay) return;
+  document.getElementById('composeTo').value = prefillTo || '';
+  document.getElementById('composeSubject').value = '';
+  document.getElementById('composeBody').value = '';
+  const fromLabel = document.getElementById('composeFromLabel');
+  if (fromLabel) fromLabel.textContent = 'Da: ' + (smtpSettings?.user_email || '');
+  overlay.classList.add('open');
+  setTimeout(() => document.getElementById('composeTo').focus(), 50);
+}
+
+function closeComposeModal() {
+  const overlay = document.getElementById('composeModal');
+  if (overlay) overlay.classList.remove('open');
+}
+
+async function sendCompose() {
+  const to      = (document.getElementById('composeTo')?.value || '').trim();
+  const subject = (document.getElementById('composeSubject')?.value || '').trim();
+  const body    = (document.getElementById('composeBody')?.value || '').trim();
+  if (!to)      { toast('Inserisci un destinatario', 'err'); return; }
+  if (!subject) { toast('Inserisci un oggetto', 'err'); return; }
+  if (!body)    { toast('Scrivi il testo del messaggio', 'err'); return; }
+
+  const btn = document.getElementById('composeBtn');
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Invio...'; }
+
+  try {
+    const { error: fnErr } = await db.functions.invoke('smtp-send', {
+      body: { to, subject, body }
+    });
+    if (fnErr) throw new Error(fnErr.message);
+    toast('Email inviata ✓', 'ok');
+    closeComposeModal();
+    // Refresh SENT folder if currently visible
+    if (emailState.folder === 'SENT') fetchEmails(false, true);
+  } catch (e) {
+    toast('Errore invio: ' + e.message, 'err');
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = 'Invia'; }
+  }
+}
+
+// Fire-and-forget IMAP action (best-effort, never blocks UI)
+function _imapAction(emailId, action) {
+  db.functions.invoke('imap-action', { body: { email_id: emailId, action } }).catch(() => {});
+}
+
+async function toggleEmailStar(id) {
+  const email = emailState.emails.find(e => e.id === id);
+  if (!email) return;
+  email.starred = !email.starred;
+  _renderEmailList();
+  await db.from('emails').update({ starred: email.starred }).eq('id', id).eq('user_id', currentUser.id);
+  _imapAction(id, email.starred ? 'star' : 'unstar');
+}
+
+async function emailToggleRead() {
+  const id = emailState.selectedId;
+  if (!id) return;
+  const email = emailState.emails.find(e => e.id === id);
+  if (!email) return;
+  email.read = !email.read;
+  _renderEmailList();
+  // Re-render toolbar to reflect new read state
+  const toolbar = document.querySelector('.email-detail-toolbar');
+  if (toolbar) {
+    const btn = toolbar.querySelector('[data-action="toggle-read"]');
+    if (btn) btn.title = email.read ? 'Segna come non letto' : 'Segna come letto';
+  }
+  await db.from('emails').update({ read: email.read }).eq('id', id).eq('user_id', currentUser.id);
+  _imapAction(id, email.read ? 'mark_read' : 'mark_unread');
+}
+
+async function emailAction(action) {
+  const id = emailState.selectedId;
+  if (!id) return;
+  const email = emailState.emails.find(e => e.id === id);
+  if (!email) return;
+
+  const dbUpdate = {};
+  if (action === 'archive') dbUpdate.archived = true;
+  else if (action === 'spam') dbUpdate.spam = true;
+  else if (action === 'trash') dbUpdate.deleted_at = new Date().toISOString();
+
+  // Optimistic: remove from current list view (it no longer belongs to this folder)
+  emailState.emails = emailState.emails.filter(e => e.id !== id);
+  emailState.selectedId = null;
+  _renderEmailList();
+  const detailPanel = document.getElementById('emailDetailPanel');
+  if (detailPanel) detailPanel.innerHTML = '<div class="email-no-select"><span style="font-size:52px">✉️</span><span>Seleziona un\'email da leggere</span></div>';
+
+  await db.from('emails').update(dbUpdate).eq('id', id).eq('user_id', currentUser.id);
+  _imapAction(id, action);
+
+  const labels = { archive: 'Archiviata ✓', spam: 'Segnata come spam ✓', trash: 'Spostata nel cestino ✓' };
+  toast(labels[action] || 'Fatto ✓', 'ok');
 }
 
 // ─────────────────────────────────────────────
@@ -3526,6 +3687,11 @@ function _updateSyncUI() {
 
 async function startEmailSync(folder) {
   folder = folder || emailState.folder || 'INBOX';
+  // Cannot sync virtual folders — redirect to their underlying IMAP folder
+  if (['ARCHIVE', 'SPAM', 'TRASH', 'STARRED'].includes(folder)) {
+    toast('Seleziona Posta in arrivo o Inviata per sincronizzare', 'ok');
+    return;
+  }
   const existing = _getSyncState();
   if (existing && existing.running) {
     toast('Sincronizzazione già in corso', 'ok');
@@ -5164,5 +5330,30 @@ async function scheduleCallFissata() {
 // BOOT
 init();
 </script>
+
+<!-- ═══════════════ COMPOSE EMAIL MODAL ═══════════════ -->
+<div class="compose-modal-overlay" id="composeModal">
+  <div class="compose-modal">
+    <div class="compose-modal-header">
+      <span>Nuovo messaggio</span>
+      <button class="compose-modal-close" onclick="closeComposeModal()" title="Chiudi">✕</button>
+    </div>
+    <div class="compose-field">
+      <span class="compose-field-label">A:</span>
+      <input type="email" id="composeTo" placeholder="Destinatario" autocomplete="off">
+    </div>
+    <div class="compose-field">
+      <span class="compose-field-label">Ogg:</span>
+      <input type="text" id="composeSubject" placeholder="Oggetto">
+    </div>
+    <div class="compose-body-area">
+      <textarea id="composeBody" placeholder="Scrivi un messaggio..."></textarea>
+    </div>
+    <div class="compose-footer">
+      <span class="compose-from" id="composeFromLabel">Da: </span>
+      <button class="btn btn-primary btn-sm" id="composeBtn" onclick="sendCompose()">Invia</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
