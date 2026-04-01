@@ -4124,6 +4124,14 @@ function renderCampaigns() {
 
   const d = campaignDraft;
 
+  // Filtra ruoli in base a contatto_tipo
+  let ruoliFiltrati = ruoli;
+  if (d.contatto_tipo === 'Prima volta') {
+    ruoliFiltrati = ruoli.filter(r => ['lead generico','cold call'].includes(r.trim().toLowerCase()));
+  } else if (d.contatto_tipo === 'Seconda volta') {
+    ruoliFiltrati = ruoli.filter(r => r.trim().toLowerCase() === 'email inviata');
+  }
+
   function radioGroup(name, options) {
     return options.map((opt, i) => `
       <div class="cw-opt">
@@ -4144,7 +4152,7 @@ function renderCampaigns() {
 
       <!-- Q1 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 1 di 8</div>
+        <div class="cw-q-num">Domanda 1 di 9</div>
         <div class="cw-q-title">Qual è l'obiettivo della tua campagna?</div>
         <div class="cw-q-sub">Scegli un solo obiettivo</div>
         <div class="cw-options">
@@ -4154,10 +4162,27 @@ function renderCampaigns() {
 
       <!-- Q2 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 2 di 8</div>
+        <div class="cw-q-num">Domanda 2 di 9</div>
+        <div class="cw-q-title">È la prima o la seconda volta che contatti queste persone via email?</div>
+        <div class="cw-q-sub">Questa informazione serve per mostrarti solo i contatti appropriati per questa campagna</div>
+        <div class="cw-options">
+          <div class="cw-opt">
+            <input type="radio" name="contatto_tipo" id="contatto_tipo_0" value="Prima volta" ${d.contatto_tipo === 'Prima volta' ? 'checked' : ''} onchange="campaignDraft['contatto_tipo']=this.value;renderCampaigns()">
+            <label for="contatto_tipo_0">Prima volta</label>
+          </div>
+          <div class="cw-opt">
+            <input type="radio" name="contatto_tipo" id="contatto_tipo_1" value="Seconda volta" ${d.contatto_tipo === 'Seconda volta' ? 'checked' : ''} onchange="campaignDraft['contatto_tipo']=this.value;renderCampaigns()">
+            <label for="contatto_tipo_1">Seconda volta</label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Q3 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 3 di 9</div>
         <div class="cw-q-title">Quale target vuoi andare a colpire per questa campagna?</div>
-        <div class="cw-q-sub">Seleziona uno o più ruoli dal tuo CRM — puoi sceglierli tutti, filtrare, o selezionare solo quelli che ti interessano</div>
-        ${ruoli.length ? `
+        <div class="cw-q-sub">Seleziona uno o più ruoli dal tuo CRM — puoi sceglierli tutti, filtrare, o selezionare solo quelli che ti interessano${d.contatto_tipo ? ` <span style="color:var(--primary-text);font-weight:600">(filtrati per: ${escHtml(d.contatto_tipo === 'Prima volta' ? 'Lead generico / Cold call' : 'Email inviata')})</span>` : ''}</div>
+        ${ruoliFiltrati.length ? `
         <div class="cw-target-selector">
           <div class="cw-target-toolbar">
             <input type="text" class="cw-target-search" placeholder="🔍 Filtra per ruolo..." oninput="filterCampaignRoles(this.value)">
@@ -4165,7 +4190,7 @@ function renderCampaigns() {
             <button class="btn btn-secondary btn-sm" onclick="selectAllCampaignRoles(false)">Nessuno</button>
           </div>
           <div class="cw-target-list">
-            ${ruoli.map(r => `<label class="cw-target-item" data-role="${escHtml(r)}">
+            ${ruoliFiltrati.map(r => `<label class="cw-target-item" data-role="${escHtml(r)}">
               <input type="checkbox" value="${escHtml(r)}" ${(campaignDraft.target_ruoli||[]).includes(r) ? 'checked' : ''} onchange="updateCampaignTargetRuoli()">
               <span class="cw-target-item-label">${escHtml(r)}</span>
             </label>`).join('')}
@@ -4174,9 +4199,9 @@ function renderCampaigns() {
         </div>` : `<div style="margin-top:8px;font-size:12px;color:var(--warning)">⚠️ Nessun contatto ha un ruolo assegnato. <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openContactModal()">Aggiungi contatti con ruolo</span> oppure <span style="cursor:pointer;text-decoration:underline;color:var(--primary-text)" onclick="openImport()">importa un file</span>.</div>`}
       </div>
 
-      <!-- Q3 -->
+      <!-- Q4 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 3 di 8</div>
+        <div class="cw-q-num">Domanda 4 di 9</div>
         <div class="cw-q-title">Seleziona il numero stimato dei dipendenti del tuo target ideale</div>
         <div class="cw-q-sub">Anche se non sai quanti sono fai una stima, serve all'AI per scrivere meglio le email</div>
         <div class="cw-options">
@@ -4184,9 +4209,9 @@ function renderCampaigns() {
         </div>
       </div>
 
-      <!-- Q4 -->
+      <!-- Q5 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 4 di 8</div>
+        <div class="cw-q-num">Domanda 5 di 9</div>
         <div class="cw-q-title">Seleziona il fatturato annuo stimato del tuo target ideale</div>
         <div class="cw-q-sub">Anche se non sai quanto fattura all'anno fai una stima, serve all'AI per scrivere meglio le email</div>
         <div class="cw-options">
@@ -4194,20 +4219,20 @@ function renderCampaigns() {
         </div>
       </div>
 
-      <!-- Q5 -->
+      <!-- Q6 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 5 di 8</div>
+        <div class="cw-q-num">Domanda 6 di 9</div>
         <div class="cw-q-title">Descrivi brevemente chi sei</div>
         <div class="cw-q-sub">Scrivi in una frase una tua presentazione personale</div>
         <textarea class="cw-textarea" rows="3" maxlength="280" id="cw_presentazione"
           placeholder="Es: Sono Mario Rossi, consulente di marketing digitale con 10 anni di esperienza nel settore retail..."
-          oninput="campaignDraft.presentazione=this.value;updateCharCount('cw_presentazione','cw_char5',280)">${escHtml(d.presentazione||'')}</textarea>
-        <div class="cw-char-hint" id="cw_char5">${(d.presentazione||'').length}/280 caratteri</div>
+          oninput="campaignDraft.presentazione=this.value;updateCharCount('cw_presentazione','cw_char6',280)">${escHtml(d.presentazione||'')}</textarea>
+        <div class="cw-char-hint" id="cw_char6">${(d.presentazione||'').length}/280 caratteri</div>
       </div>
 
-      <!-- Q6 -->
+      <!-- Q7 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 6 di 8</div>
+        <div class="cw-q-num">Domanda 7 di 9</div>
         <div class="cw-q-title">Descrivi dettagliatamente il prodotto o servizio che vuoi andare a promuovere</div>
         <div class="cw-q-sub">Scrivi un solo prodotto o servizio nel dettaglio, più sarai preciso e meglio l'AI scriverà le email.<br><strong style="color:var(--warning)">Attenzione: NON scrivere più di un prodotto</strong></div>
         <textarea class="cw-textarea" rows="5" id="cw_prodotto"
@@ -4215,9 +4240,9 @@ function renderCampaigns() {
           oninput="campaignDraft.prodotto=this.value">${escHtml(d.prodotto||'')}</textarea>
       </div>
 
-      <!-- Q7 -->
+      <!-- Q8 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 7 di 8</div>
+        <div class="cw-q-num">Domanda 8 di 9</div>
         <div class="cw-q-title">Descrivi dettagliatamente il punto di forza del tuo prodotto o servizio</div>
         <div class="cw-q-sub">Perché le persone dovrebbero scegliere proprio il tuo prodotto e non quello di qualcun altro?</div>
         <textarea class="cw-textarea" rows="5" id="cw_forza"
@@ -4225,9 +4250,9 @@ function renderCampaigns() {
           oninput="campaignDraft.forza=this.value">${escHtml(d.forza||'')}</textarea>
       </div>
 
-      <!-- Q8 -->
+      <!-- Q9 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 8 di 8</div>
+        <div class="cw-q-num">Domanda 9 di 9</div>
         <div class="cw-q-title">Descrivi dettagliatamente la garanzia che vuoi offrire sul tuo prodotto o servizio</div>
         <div class="cw-q-sub">Con una garanzia chiara puoi convincere più facilmente le persone a fidarsi e acquistare da te, senza una garanzia rischi di non ricevere appuntamenti</div>
         <textarea class="cw-textarea" rows="5" id="cw_garanzia"
@@ -4280,13 +4305,14 @@ function validateCampaignForm() {
   const d = campaignDraft;
   const missing = [];
   if (!d.obiettivo)                    missing.push('Obiettivo della campagna (Dom. 1)');
-  if (!(d.target_ruoli||[]).length)    missing.push('Target / ruolo (Dom. 2)');
-  if (!d.dipendenti)    missing.push('Numero dipendenti (Dom. 3)');
-  if (!d.fatturato)     missing.push('Fatturato stimato (Dom. 4)');
-  if (!(d.presentazione||'').trim()) missing.push('Chi sei (Dom. 5)');
-  if (!(d.prodotto||'').trim())      missing.push('Prodotto / servizio (Dom. 6)');
-  if (!(d.forza||'').trim())         missing.push('Punto di forza (Dom. 7)');
-  if (!(d.garanzia||'').trim())      missing.push('Garanzia (Dom. 8)');
+  if (!d.contatto_tipo)                missing.push('Prima o seconda volta (Dom. 2)');
+  if (!(d.target_ruoli||[]).length)    missing.push('Target / ruolo (Dom. 3)');
+  if (!d.dipendenti)    missing.push('Numero dipendenti (Dom. 4)');
+  if (!d.fatturato)     missing.push('Fatturato stimato (Dom. 5)');
+  if (!(d.presentazione||'').trim()) missing.push('Chi sei (Dom. 6)');
+  if (!(d.prodotto||'').trim())      missing.push('Prodotto / servizio (Dom. 7)');
+  if (!(d.forza||'').trim())         missing.push('Punto di forza (Dom. 8)');
+  if (!(d.garanzia||'').trim())      missing.push('Garanzia (Dom. 9)');
 
   if (missing.length) {
     toast('Compila tutti i campi obbligatori', 'err');
