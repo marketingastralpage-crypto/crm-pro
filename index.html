@@ -2062,6 +2062,7 @@ function renderContactsSpreadsheet() {
         <button class="view-btn" onclick="contactsViewMode='list';selectedContacts=new Set();renderContacts()">☰ Lista</button>
         <button class="view-btn active" onclick="void 0">⊞ Tabella</button>
       </div>
+      <button class="btn btn-secondary btn-sm" onclick="openBulkRoleModal()" style="font-size:12px;white-space:nowrap">🔄 Sostituisci ruoli</button>
     </div>
     ${bulkBar}
     <div class="spreadsheet-wrap">
@@ -2168,6 +2169,62 @@ async function bulkChangeField() {
     const first = contacts.find(c => c.id === prevNotCallFissata[0].id);
     if (first) setTimeout(() => openCallFissataPopup(first), 350);
   }
+}
+
+function openBulkRoleModal() {
+  const roles = [...new Set(contacts.map(c => c.ruolo).filter(Boolean))].sort();
+  if (!roles.length) { toast('Nessun ruolo presente nei contatti', 'err'); return; }
+  document.getElementById('bulkRoleOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.id = 'bulkRoleOverlay';
+  overlay.className = 'overlay';
+  overlay.innerHTML = `
+    <div class="modal" style="max-width:480px">
+      <div class="modal-header">
+        <h2>Sostituisci ruoli in bulk</h2>
+        <button class="modal-close" onclick="document.getElementById('bulkRoleOverlay').remove()">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group" style="margin-bottom:16px">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.5px">Ruoli da sostituire:</label>
+          <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto;padding:4px 0">
+            <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" id="bulkRoleSelectAll" onchange="document.querySelectorAll('.bulk-role-cb').forEach(cb=>cb.checked=this.checked)">
+              <span style="color:var(--text-sec);font-style:italic">Seleziona tutti</span>
+            </label>
+            ${roles.map(r => `
+            <label style="font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer">
+              <input type="checkbox" class="bulk-role-cb" value="${r.replace(/"/g,'&quot;')}">
+              <span style="color:var(--text)">${r}</span>
+            </label>`).join('')}
+          </div>
+        </div>
+        <div class="form-group">
+          <label style="font-size:12px;font-weight:600;color:var(--text-sec);text-transform:uppercase;letter-spacing:.5px">Nuovo ruolo:</label>
+          <input id="bulkRoleNewInput" type="text" class="filter-input" placeholder="Inserisci il nuovo ruolo..." style="margin-top:6px">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('bulkRoleOverlay').remove()">Annulla</button>
+        <button class="btn btn-primary btn-sm" onclick="applyBulkRoleReplace()">Applica</button>
+      </div>
+    </div>`;
+  document.body.appendChild(overlay);
+}
+
+async function applyBulkRoleReplace() {
+  const checked = [...document.querySelectorAll('.bulk-role-cb:checked')].map(el => el.value);
+  const newRole = document.getElementById('bulkRoleNewInput')?.value?.trim();
+  if (!checked.length) { toast('Seleziona almeno un ruolo da sostituire', 'err'); return; }
+  if (!newRole) { toast('Inserisci il nuovo ruolo', 'err'); return; }
+  const ids = contacts.filter(c => checked.includes(c.ruolo)).map(c => c.id);
+  if (!ids.length) { toast('Nessun contatto trovato per i ruoli selezionati', 'err'); return; }
+  const { error } = await db.from('contacts').update({ ruolo: newRole }).in('id', ids).eq('user_id', currentUser.id);
+  if (error) { toast('Errore: ' + error.message, 'err'); return; }
+  ids.forEach(id => { const c = contacts.find(x => x.id === id); if (c) c.ruolo = newRole; });
+  document.getElementById('bulkRoleOverlay')?.remove();
+  renderContacts();
+  toast(`${ids.length} contatt${ids.length === 1 ? 'o' : 'i'} aggiornati`, 'ok');
 }
 
 // ─────────────────────────────────────────────
