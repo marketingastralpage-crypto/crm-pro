@@ -2227,11 +2227,22 @@ async function applyBulkRoleReplace() {
   if (!newRole) { toast('Inserisci il nuovo ruolo', 'err'); return; }
   const ids = contacts.filter(c => checked.includes(c.ruolo)).map(c => c.id);
   if (!ids.length) { toast('Nessun contatto trovato per i ruoli selezionati', 'err'); return; }
+
+  const applyBtn = document.querySelector('#bulkRoleOverlay .btn-primary');
+  const cancelBtn = document.querySelector('#bulkRoleOverlay .btn-secondary');
+  if (applyBtn) { applyBtn.disabled = true; applyBtn.textContent = '⏳ Applicando…'; }
+  if (cancelBtn) cancelBtn.disabled = true;
+
   const chunkSize = 100;
   for (let i = 0; i < ids.length; i += chunkSize) {
     const chunk = ids.slice(i, i + chunkSize);
     const { error } = await db.from('contacts').update({ ruolo: newRole }).in('id', chunk).eq('user_id', currentUser.id);
-    if (error) { toast('Errore: ' + error.message, 'err'); return; }
+    if (error) {
+      toast('Errore: ' + error.message, 'err');
+      if (applyBtn) { applyBtn.disabled = false; applyBtn.textContent = 'Applica'; }
+      if (cancelBtn) cancelBtn.disabled = false;
+      return;
+    }
     chunk.forEach(id => { const c = contacts.find(x => x.id === id); if (c) c.ruolo = newRole; });
   }
   document.getElementById('bulkRoleOverlay')?.remove();
