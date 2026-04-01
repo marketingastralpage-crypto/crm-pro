@@ -4125,11 +4125,15 @@ function renderCampaigns() {
   const d = campaignDraft;
 
   // Filtra ruoli in base a contatto_tipo
+  const _normRole = s => s.replace(/[\s\u00a0]+/g, ' ').trim().toLowerCase();
   let ruoliFiltrati = ruoli;
   if (d.contatto_tipo === 'Prima volta') {
-    ruoliFiltrati = ruoli.filter(r => ['lead generico','cold call'].includes(r.trim().toLowerCase()));
+    ruoliFiltrati = ruoli.filter(r => {
+      const n = _normRole(r);
+      return n.includes('lead generico') || n.includes('cold call');
+    });
   } else if (d.contatto_tipo === 'Seconda volta') {
-    ruoliFiltrati = ruoli.filter(r => r.trim().toLowerCase() === 'email inviata');
+    ruoliFiltrati = ruoli.filter(r => _normRole(r).includes('email inviata'));
   }
 
   function radioGroup(name, options) {
