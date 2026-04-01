@@ -4124,17 +4124,14 @@ function renderCampaigns() {
 
   const d = campaignDraft;
 
-  // Filtra ruoli in base a contatto_tipo
-  const _normRole = s => s.replace(/[\s\u00a0]+/g, ' ').trim().toLowerCase();
-  let ruoliFiltrati = ruoli;
+  // Filtra contatti per stage in base a contatto_tipo, poi estrai i ruoli disponibili
+  let contactsFiltrati = contacts;
   if (d.contatto_tipo === 'Prima volta') {
-    ruoliFiltrati = ruoli.filter(r => {
-      const n = _normRole(r);
-      return n.includes('lead generico') || n.includes('cold call');
-    });
+    contactsFiltrati = contacts.filter(c => c.stage === 'Lead generico' || c.stage === 'Cold call');
   } else if (d.contatto_tipo === 'Seconda volta') {
-    ruoliFiltrati = ruoli.filter(r => _normRole(r).includes('email inviata'));
+    contactsFiltrati = contacts.filter(c => c.stage === 'Email inviata');
   }
+  const ruoliFiltrati = [...new Set(contactsFiltrati.map(c => c.ruolo).filter(r => r && r.trim()))].sort();
 
   function radioGroup(name, options) {
     return options.map((opt, i) => `
@@ -4411,7 +4408,12 @@ function renderCampaignEditor() {
   const d = campaignDraft;
   const content = document.getElementById('content');
 
-  const targetContacts = contacts.filter(c => (d.target_ruoli||[]).includes(c.ruolo));
+  let targetContacts = contacts.filter(c => (d.target_ruoli||[]).includes(c.ruolo));
+  if (d.contatto_tipo === 'Prima volta') {
+    targetContacts = targetContacts.filter(c => c.stage === 'Lead generico' || c.stage === 'Cold call');
+  } else if (d.contatto_tipo === 'Seconda volta') {
+    targetContacts = targetContacts.filter(c => c.stage === 'Email inviata');
+  }
   const contactsWithEmail = targetContacts.filter(c => c.email && c.email.trim()).length;
 
   const contactsHtml = targetContacts.length
