@@ -16,3 +16,10 @@
 - `renderEmail` + sync helpers → area email.
 - `renderCampaigns` → campagne.
 - `renderCalendar` → calendario.
+- `renderCampaignWizard` (~riga 4200) → wizard creazione campagna (Q1-Q10, `campaignDraft`).
+- `renderCampaignEditor` (~riga 4405) → anteprima destinatari, applica filtri e limite `max_contatti`.
+- `validateCampaignForm` (~riga 4316) → validazione wizard prima di passare all'editor.
+
+## Note campagne
+- `campaignDraft` è lo stato globale del wizard.
+- Il campo `max_contatti` (Q10) è opzionale; il limite viene applicato in `renderCampaignEditor` con `.slice(0, maxContatti)` dopo i filtri ruolo/stage.

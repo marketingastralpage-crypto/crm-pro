@@ -4253,12 +4253,25 @@ function renderCampaigns() {
 
       <!-- Q9 -->
       <div class="cw-q-card">
-        <div class="cw-q-num">Domanda 9 di 9</div>
+        <div class="cw-q-num">Domanda 9 di 10</div>
         <div class="cw-q-title">Descrivi dettagliatamente la garanzia che vuoi offrire sul tuo prodotto o servizio</div>
         <div class="cw-q-sub">Con una garanzia chiara puoi convincere più facilmente le persone a fidarsi e acquistare da te, senza una garanzia rischi di non ricevere appuntamenti</div>
         <textarea class="cw-textarea" rows="5" id="cw_garanzia"
           placeholder="Es: Offriamo una garanzia soddisfatti o rimborsati entro 30 giorni. Se non ottieni risultati entro 60 giorni ti restituiamo..."
           oninput="campaignDraft.garanzia=this.value">${escHtml(d.garanzia||'')}</textarea>
+      </div>
+
+      <!-- Q10 -->
+      <div class="cw-q-card">
+        <div class="cw-q-num">Domanda 10 di 10</div>
+        <div class="cw-q-title">Quanti contatti vuoi contattare?</div>
+        <div class="cw-q-sub">Indica il numero massimo di destinatari. Se è superiore ai contatti disponibili, verranno selezionati tutti.</div>
+        <input type="number" class="cw-input" id="cw_max_contatti" min="1"
+          style="width:160px;padding:9px 12px;background:var(--bg-surface);border:1px solid var(--border-md);border-radius:var(--radius-sm);color:var(--text);font-size:15px;font-family:inherit;outline:none;"
+          placeholder="Es: 50"
+          value="${d.max_contatti||''}"
+          oninput="campaignDraft.max_contatti=this.value?parseInt(this.value):null"
+          onfocus="this.style.borderColor='var(--primary)'" onblur="this.style.borderColor=''">
       </div>
 
       <div class="cw-footer">
@@ -4413,6 +4426,11 @@ function renderCampaignEditor() {
     targetContacts = targetContacts.filter(c => c.stage === 'Lead generico' || c.stage === 'Cold call');
   } else if (d.contatto_tipo === 'Seconda volta') {
     targetContacts = targetContacts.filter(c => c.stage === 'Email inviata');
+  }
+  // Applica limite max_contatti (Q10)
+  const maxContatti = d.max_contatti ? parseInt(d.max_contatti) : null;
+  if (maxContatti && maxContatti > 0) {
+    targetContacts = targetContacts.slice(0, maxContatti);
   }
   const contactsWithEmail = targetContacts.filter(c => c.email && c.email.trim()).length;
 
