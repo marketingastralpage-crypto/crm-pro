@@ -4048,7 +4048,7 @@ let campaignDraft = {};
 let campaignState = {
   active: false, draft: {}, emailTemplate: '', emailSubject: '',
   targetContacts: [], sent: 0, total: 0, running: false, startedAt: null, failed: 0,
-  dbId: null
+  dbId: null, lastIndex: -1, resumeFromIndex: 0, errorCode: null, errorDetail: null
 };
 let campaignsView = 'list'; // 'list' | 'form' | 'editor' | 'execution'
 let campaignsList = [];
@@ -4569,14 +4569,27 @@ async function launchCampaign() {
   runCampaignSend();
 }
 
+function diagnoseCampaignError(msg) {
+  const m = (msg || '').toLowerCase();
+  if (/535|534|530|username.*password|auth.*fail|invalid.*credential/.test(m))
+    return { code: 'SMTP_AUTH', detail: 'Autenticazione SMTP fallita. Verifica username e password nelle impostazioni.' };
+  if (/421|450|451|rate.limit|too many|message.*flood|daily.*limit|hourly.*limit|quota|4\.7\.|connection.*frequen/.test(m))
+    return { code: 'SMTP_RATE_LIMIT', detail: 'Limite di invio SMTP raggiunto. Attendi qualche ora prima di riprendere.' };
+  if (/econnrefused|etimedout|econnreset|timeout|network|socket|dns/.test(m))
+    return { code: 'SMTP_NETWORK', detail: 'Errore di rete o timeout SMTP. Controlla la connessione e le impostazioni del server.' };
+  if (/550|551|552|553|mailbox|user.*unknown|no.*such|does not exist/.test(m))
+    return { code: 'SMTP_RECIPIENT', detail: 'La maggior parte dei destinatari risulta inesistente o bloccata (errore 55x).' };
+  return { code: 'SMTP_UNKNOWN', detail: `Errore SMTP ripetuto: ${msg?.slice(0, 120) || 'sconosciuto'}` };
+}
+
 async function runCampaignSend() {
-  const state        = campaignState;
+  const state         = campaignState;
   const senderNome    = smtpSettings?.mittente_nome    || '';
   const senderCognome = smtpSettings?.mittente_cognome || '';
   const senderRuolo   = smtpSettings?.mittente_ruolo   || '';
 
   function fillPlaceholders(text, c) {
-    return text
+    return (text || '')
       .replace(/\{\{nome\}\}/g,            c.nome    || '')
       .replace(/\{\{cognome\}\}/g,         c.cognome || '')
       .replace(/\{\{azienda\}\}/g,         c.azienda || '')
@@ -4586,16 +4599,27 @@ async function runCampaignSend() {
       .replace(/\{\{mittente_ruolo\}\}/g,   senderRuolo);
   }
 
-  async function syncCampaignToDB(final = false) {
+  async function syncCampaignToDB(final = false, errorCode = null, errorDetail = null) {
     if (!campaignState.dbId) return;
-    const upd = { sent: campaignState.sent, failed: campaignState.failed };
+    const upd = {
+      sent: campaignState.sent,
+      failed: campaignState.failed,
+      last_index: campaignState.lastIndex
+    };
     if (final) { upd.status = 'completed'; upd.completed_at = new Date().toISOString(); }
+    if (errorCode) { upd.status = 'error'; upd.error_code = errorCode; upd.error_detail = errorDetail || null; }
     await db.from('campaigns').update(upd).eq('id', campaignState.dbId);
     const rec = campaignsList.find(c => c.id === campaignState.dbId);
     if (rec) Object.assign(rec, upd);
   }
 
-  for (let i = 0; i < state.targetContacts.length; i++) {
+  const CONSECUTIVE_ERROR_THRESHOLD = 10;
+  let consecutiveErrors = 0;
+  let lastErrorMsg = '';
+
+  const startIndex = state.resumeFromIndex || 0;
+
+  for (let i = startIndex; i < state.targetContacts.length; i++) {
     const c = state.targetContacts[i];
     const body    = fillPlaceholders(state.emailTemplate, c);
     const subject = fillPlaceholders(state.emailSubject, c);
@@ -4607,15 +4631,31 @@ async function runCampaignSend() {
       if (fnErr) throw new Error(fnErr.message);
       const newStage = c.stage === 'Email inviata' ? 'Followup inviato' : 'Email inviata';
       await updateContactInDB(c.id, { stage: newStage, priorita: 'Bassa' });
+      consecutiveErrors = 0;
     } catch (e) {
-      console.error('[campaign] failed to send to', c.email, e);
+      lastErrorMsg = e instanceof Error ? e.message : String(e);
+      console.error('[campaign] failed to send to', c.email, lastErrorMsg);
       campaignState.failed++;
+      consecutiveErrors++;
     }
     campaignState.sent++;
+    campaignState.lastIndex = i;
     updateCampaignDashboard();
 
+    // Diagnosi automatica: troppi errori consecutivi → sospendi campagna
+    if (consecutiveErrors >= CONSECUTIVE_ERROR_THRESHOLD) {
+      const { code, detail } = diagnoseCampaignError(lastErrorMsg);
+      campaignState.running = false;
+      campaignState.errorCode = code;
+      campaignState.errorDetail = detail;
+      await syncCampaignToDB(false, code, detail).catch(e => console.warn('[campaign] sync error', e));
+      updateCampaignDashboard();
+      toast(`Campagna sospesa: ${code}. ${detail}`, 'err');
+      return;
+    }
+
     // Persist progress to DB every 5 sends
-    if (campaignState.sent % 5 === 0) await syncCampaignToDB();
+    if (campaignState.sent % 5 === 0) await syncCampaignToDB().catch(e => console.warn('[campaign] sync error', e));
 
     // 15s delay between emails (skip after last)
     if (i < state.targetContacts.length - 1) {
@@ -4624,7 +4664,7 @@ async function runCampaignSend() {
   }
 
   campaignState.running = false;
-  await syncCampaignToDB(true);
+  await syncCampaignToDB(true).catch(e => console.warn('[campaign] final sync error', e));
   updateCampaignDashboard();
   const ok = campaignState.sent - campaignState.failed;
   toast(`Campagna completata! ${ok} email inviate${campaignState.failed ? ', ' + campaignState.failed + ' errori' : ''} ✓`, 'ok');
@@ -4633,13 +4673,20 @@ async function runCampaignSend() {
 function renderCampaignDashboard() {
   const s = campaignViewRecord ? {
     running: false,
+    status: campaignViewRecord.status || 'completed',
     draft: campaignViewRecord.draft || {},
     emailSubject: campaignViewRecord.email_subject,
     sent: campaignViewRecord.sent,
     total: campaignViewRecord.total,
     failed: campaignViewRecord.failed,
-    startedAt: campaignViewRecord.started_at
-  } : campaignState;
+    startedAt: campaignViewRecord.started_at,
+    errorCode: campaignViewRecord.error_code || null,
+    errorDetail: campaignViewRecord.error_detail || null,
+    dbId: campaignViewRecord.id
+  } : {
+    ...campaignState,
+    status: campaignState.running ? 'running' : (campaignState.errorCode ? 'error' : 'completed')
+  };
   const pct = s.total > 0 ? Math.round((s.sent / s.total) * 100) : 0;
 
   document.getElementById('content').innerHTML = `
@@ -4661,10 +4708,12 @@ function renderCampaignDashboard() {
       <div class="cd-card">
         <div class="cd-card-title">
           Progresso Invio
-          <span class="cd-status-badge ${s.running ? 'cd-status-running' : 'cd-status-done'}" id="cdStatusBadge">
-            <span class="cd-status-dot"></span>
-            <span id="cdStatusLabel">${s.running ? 'In corso' : 'Completata'}</span>
-          </span>
+          ${(() => {
+            if (s.running) return `<span class="cd-status-badge cd-status-running" id="cdStatusBadge"><span class="cd-status-dot"></span><span id="cdStatusLabel">In corso</span></span>`;
+            if (s.status === 'error') return `<span class="cd-status-badge" style="background:rgba(239,68,68,0.15);color:#f87171" id="cdStatusBadge"><span class="cd-status-dot" style="background:#f87171"></span><span id="cdStatusLabel">Errore SMTP</span></span>`;
+            if (s.status === 'interrupted') return `<span class="cd-status-badge" style="background:rgba(245,158,11,0.15);color:#fbbf24" id="cdStatusBadge"><span class="cd-status-dot" style="background:#fbbf24"></span><span id="cdStatusLabel">Interrotta</span></span>`;
+            return `<span class="cd-status-badge cd-status-done" id="cdStatusBadge"><span class="cd-status-dot"></span><span id="cdStatusLabel">Completata</span></span>`;
+          })()}
         </div>
         <div class="cd-progress-row">
           <div class="cd-progress-bar">
@@ -4675,6 +4724,13 @@ function renderCampaignDashboard() {
         <div style="font-size:12.5px;color:var(--text-sec);margin-top:4px" id="cdProgressLabel">
           ${s.sent} di ${s.total} email inviate${s.running && s.sent < s.total ? ' — prossima email tra ~15 secondi' : ''}
         </div>
+        ${(s.errorCode || s.status === 'interrupted') && !s.running ? `
+        <div style="margin-top:12px;padding:10px 14px;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:8px;font-size:12.5px" id="cdErrorBox">
+          ${s.errorCode
+            ? `<div style="color:#f87171;font-weight:600;margin-bottom:3px">⚠ ${escHtml(s.errorCode)}</div><div style="color:var(--text-sec)">${escHtml(s.errorDetail||'')}</div>`
+            : `<div style="color:#fbbf24;font-weight:600">⚠ Campagna interrotta</div><div style="color:var(--text-sec)">La sessione browser è stata chiusa prima del completamento.</div>`}
+          ${s.sent < s.total ? `<button class="btn btn-primary btn-sm" style="margin-top:8px" onclick="resumeCampaign('${escHtml(s.dbId||'')}')">▶ Riprendi da email ${(s.sent||0)+1}</button>` : ''}
+        </div>` : ''}
       </div>
 
       <div class="cd-card">
@@ -4716,7 +4772,7 @@ function updateCampaignDashboard() {
   // Keep in-memory list record in sync
   if (s.dbId) {
     const rec = campaignsList.find(c => c.id === s.dbId);
-    if (rec) { rec.sent = s.sent; rec.failed = s.failed; rec.status = s.running ? 'running' : 'completed'; }
+    if (rec) { rec.sent = s.sent; rec.failed = s.failed; rec.status = s.running ? 'running' : (s.errorCode ? 'error' : 'completed'); }
   }
 
   const el = (id) => document.getElementById(id);
@@ -4728,8 +4784,19 @@ function updateCampaignDashboard() {
   if (el('cdStatFailed')) el('cdStatFailed').textContent = s.failed;
   const badge = el('cdStatusBadge');
   if (badge) {
-    badge.className = `cd-status-badge ${s.running ? 'cd-status-running' : 'cd-status-done'}`;
-    if (el('cdStatusLabel')) el('cdStatusLabel').textContent = s.running ? 'In corso' : 'Completata';
+    if (s.running) {
+      badge.className = 'cd-status-badge cd-status-running';
+      badge.removeAttribute('style');
+      if (el('cdStatusLabel')) el('cdStatusLabel').textContent = 'In corso';
+    } else if (s.errorCode) {
+      badge.className = 'cd-status-badge';
+      badge.style.cssText = 'background:rgba(239,68,68,0.15);color:#f87171';
+      if (el('cdStatusLabel')) el('cdStatusLabel').textContent = 'Errore SMTP';
+    } else {
+      badge.className = 'cd-status-badge cd-status-done';
+      badge.removeAttribute('style');
+      if (el('cdStatusLabel')) el('cdStatusLabel').textContent = 'Completata';
+    }
   }
 }
 
@@ -4739,7 +4806,7 @@ function startNewCampaign() {
     return;
   }
   campaignDraft = {};
-  campaignState = { active: false, draft: {}, emailTemplate: '', emailSubject: '', targetContacts: [], sent: 0, total: 0, running: false, startedAt: null, failed: 0, dbId: null };
+  campaignState = { active: false, draft: {}, emailTemplate: '', emailSubject: '', targetContacts: [], sent: 0, total: 0, running: false, startedAt: null, failed: 0, dbId: null, lastIndex: -1, resumeFromIndex: 0, errorCode: null, errorDetail: null };
   campaignsView = 'form';
   campaignViewRecord = null;
   renderCampaigns();
@@ -4756,6 +4823,45 @@ function viewCampaignFromList(id) {
   }
   campaignsView = 'execution';
   renderCampaigns();
+}
+
+async function resumeCampaign(id) {
+  if (!id) return;
+  if (campaignState.running) { toast('Una campagna è già in corso.', 'warn'); return; }
+  const rec = campaignsList.find(c => c.id === id);
+  if (!rec) { toast('Campagna non trovata.', 'err'); return; }
+
+  const allContacts = rec.target_contacts || [];
+  const lastIndex   = rec.last_index ?? -1;
+  const remaining   = allContacts.length - (lastIndex + 1);
+  if (remaining <= 0) { toast('Nessun contatto rimanente da inviare.', 'warn'); return; }
+
+  campaignState = {
+    active: true,
+    draft: rec.draft || {},
+    emailTemplate: rec.email_template || '',
+    emailSubject: rec.email_subject || '',
+    targetContacts: allContacts,
+    sent: rec.sent || 0,
+    total: rec.total || allContacts.length,
+    running: true,
+    startedAt: rec.started_at,
+    failed: rec.failed || 0,
+    dbId: id,
+    lastIndex: lastIndex,
+    resumeFromIndex: lastIndex + 1,
+    errorCode: null,
+    errorDetail: null
+  };
+
+  await db.from('campaigns').update({ status: 'running', error_code: null, error_detail: null }).eq('id', id);
+  const listRec = campaignsList.find(c => c.id === id);
+  if (listRec) Object.assign(listRec, { status: 'running', error_code: null, error_detail: null });
+
+  campaignViewRecord = null;
+  campaignsView = 'execution';
+  renderCampaignDashboard();
+  runCampaignSend();
 }
 
 function renderCampaignsList() {
@@ -4804,8 +4910,8 @@ function renderCampaignsList() {
     const draft = camp.draft || {};
     const pct = camp.total > 0 ? Math.round((camp.sent / camp.total) * 100) : 0;
     const ok = Math.max(0, camp.sent - camp.failed);
-    const statusClass = camp.status === 'running' ? 'cl-status-running' : camp.status === 'interrupted' ? 'cl-status-interrupted' : 'cl-status-done';
-    const statusLabel = camp.status === 'running' ? 'In corso' : camp.status === 'interrupted' ? 'Interrotta' : 'Completata';
+    const statusClass = camp.status === 'running' ? 'cl-status-running' : (camp.status === 'interrupted' || camp.status === 'error') ? 'cl-status-interrupted' : 'cl-status-done';
+    const statusLabel = camp.status === 'running' ? 'In corso' : camp.status === 'interrupted' ? 'Interrotta' : camp.status === 'error' ? `Errore: ${camp.error_code||'SMTP'}` : 'Completata';
     const date = camp.started_at ? new Date(camp.started_at).toLocaleString('it-IT',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '';
     rows += `
       <div class="cl-item" onclick="viewCampaignFromList('${escHtml(camp.id)}')">
