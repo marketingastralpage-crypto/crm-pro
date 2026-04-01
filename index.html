@@ -2109,8 +2109,12 @@ async function bulkDelete() {
   if (!selectedContacts.size) return;
   if (!confirm(`Eliminare ${selectedContacts.size} contatti selezionati? Questa operazione non può essere annullata.`)) return;
   const ids = [...selectedContacts];
-  const { error } = await db.from('contacts').delete().in('id', ids).eq('user_id', currentUser.id);
-  if (error) { toast('Errore eliminazione: '+error.message, 'err'); return; }
+  const chunkSize = 100;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { error } = await db.from('contacts').delete().in('id', chunk).eq('user_id', currentUser.id);
+    if (error) { toast('Errore eliminazione: '+error.message, 'err'); return; }
+  }
   contacts = contacts.filter(c => !ids.includes(c.id));
   selectedContacts.clear();
   document.getElementById('sideCount').textContent = contacts.length;
@@ -2158,9 +2162,13 @@ async function bulkChangeField() {
     ? contacts.filter(c => ids.includes(c.id) && c.stage !== 'Call fissata')
     : [];
 
-  const { error } = await db.from('contacts').update({[field]: value}).in('id', ids).eq('user_id', currentUser.id);
-  if (error) { toast('Errore: '+error.message, 'err'); return; }
-  ids.forEach(id => { const c=contacts.find(x=>x.id===id); if(c) c[field]=value; });
+  const chunkSize = 100;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { error } = await db.from('contacts').update({[field]: value}).in('id', chunk).eq('user_id', currentUser.id);
+    if (error) { toast('Errore: '+error.message, 'err'); return; }
+    chunk.forEach(id => { const c=contacts.find(x=>x.id===id); if(c) c[field]=value; });
+  }
   toast(`"${field}" aggiornato per ${ids.length} contatti`, 'ok');
   renderContacts();
 
@@ -2219,9 +2227,13 @@ async function applyBulkRoleReplace() {
   if (!newRole) { toast('Inserisci il nuovo ruolo', 'err'); return; }
   const ids = contacts.filter(c => checked.includes(c.ruolo)).map(c => c.id);
   if (!ids.length) { toast('Nessun contatto trovato per i ruoli selezionati', 'err'); return; }
-  const { error } = await db.from('contacts').update({ ruolo: newRole }).in('id', ids).eq('user_id', currentUser.id);
-  if (error) { toast('Errore: ' + error.message, 'err'); return; }
-  ids.forEach(id => { const c = contacts.find(x => x.id === id); if (c) c.ruolo = newRole; });
+  const chunkSize = 100;
+  for (let i = 0; i < ids.length; i += chunkSize) {
+    const chunk = ids.slice(i, i + chunkSize);
+    const { error } = await db.from('contacts').update({ ruolo: newRole }).in('id', chunk).eq('user_id', currentUser.id);
+    if (error) { toast('Errore: ' + error.message, 'err'); return; }
+    chunk.forEach(id => { const c = contacts.find(x => x.id === id); if (c) c.ruolo = newRole; });
+  }
   document.getElementById('bulkRoleOverlay')?.remove();
   renderContacts();
   toast(`${ids.length} contatt${ids.length === 1 ? 'o' : 'i'} aggiornati`, 'ok');
