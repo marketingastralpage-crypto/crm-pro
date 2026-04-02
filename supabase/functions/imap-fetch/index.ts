@@ -68,6 +68,26 @@ serve(async (req: Request) => {
       : logicalFolder;
 
     const imapPort = Number(cfg.imap_porta) || 993;
+
+    // Step 1: TCP connectivity check — distingue blocco IP da problemi IMAP/TLS
+    // deno-lint-ignore no-explicit-any
+    const denoConnect = (globalThis as any).Deno?.connect as
+      | ((opts: { hostname: string; port: number }) => Promise<{ close(): void }>)
+      | undefined;
+    if (denoConnect) {
+      try {
+        const tcpConn = await Promise.race([
+          denoConnect({ hostname: cfg.imap_host, port: imapPort }),
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(new Error(`TCP timeout: impossibile raggiungere ${cfg.imap_host}:${imapPort} in 8s`)), 8000)
+          ),
+        ]);
+        tcpConn.close();
+      } catch (tcpErr) {
+        throw new Error(`Connessione TCP fallita — ${(tcpErr as Error).message}`);
+      }
+    }
+
     const client = new ImapFlow({
       host: cfg.imap_host,
       port: imapPort,
@@ -75,10 +95,17 @@ serve(async (req: Request) => {
       auth: { user: cfg.user_email, pass: cfg.password },
       logger: false,
       tls: { rejectUnauthorized: false },
-      connectionTimeout: 20000,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
     });
 
-    await client.connect();
+    // Step 2: IMAP connect con timeout esplicito (ImapFlow può bloccarsi in Deno)
+    await Promise.race([
+      client.connect(),
+      new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error("IMAP connect timeout dopo 12s (TLS/greeting bloccato)")), 12000)
+      ),
+    ]);
 
     // deno-lint-ignore no-explicit-any
     const emails: Record<string, any>[] = [];
