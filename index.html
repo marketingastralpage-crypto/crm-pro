@@ -5108,7 +5108,7 @@ function renderCampaignDashboard() {
       <div class="cd-header">
         <div>
           <div class="cd-title">📊 Campagna Email</div>
-          <div style="font-size:13px;color:var(--text-sec);margin-top:3px">${escHtml(s.draft?.obiettivo||'')} · Target: <strong>${escHtml((s.draft?.target_ruoli||[]).join(', '))}</strong></div>
+          <div style="font-size:13px;color:var(--text-sec);margin-top:3px">${escHtml(s.draft?.obiettivo||'')} · Target: <strong style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml((s.draft?.target_ruoli||[]).join(', '))}</strong></div>
         </div>
       </div>
 
@@ -5162,7 +5162,7 @@ function renderCampaignDashboard() {
         <div class="cd-card-title">Dettagli</div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;font-size:13px;line-height:1.8">
           <div><span style="color:var(--muted)">Obiettivo:</span> ${escHtml(s.draft?.obiettivo||'—')}</div>
-          <div><span style="color:var(--muted)">Target:</span> ${escHtml((s.draft?.target_ruoli||[]).join(', ')||'—')}</div>
+          <div><span style="color:var(--muted)">Target:</span> <span style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml((s.draft?.target_ruoli||[]).join(', ')||'—')}</span></div>
           <div><span style="color:var(--muted)">Oggetto:</span> ${escHtml(s.emailSubject||'—')}</div>
           <div><span style="color:var(--muted)">Avviata:</span> ${s.startedAt ? new Date(s.startedAt).toLocaleString('it-IT') : '—'}</div>
         </div>
