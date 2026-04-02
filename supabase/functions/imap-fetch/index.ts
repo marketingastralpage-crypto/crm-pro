@@ -20,6 +20,56 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// deno-lint-ignore no-explicit-any
+function buildImapClient(cfg: Record<string, any>): ImapFlow {
+  const imapPort = Number(cfg.imap_porta) || 993;
+  const isSecureMail = typeof cfg.imap_host === "string" &&
+    cfg.imap_host.includes("securemail.pro");
+
+  // deno-lint-ignore no-explicit-any
+  const options: Record<string, any> = {
+    host: cfg.imap_host,
+    port: imapPort,
+    secure: imapPort === 993,
+    auth: {
+      user: cfg.user_email,
+      pass: cfg.password,
+      ...(isSecureMail ? { loginMethod: "AUTH=LOGIN" } : {}),
+    },
+    logger: false,
+    tls: {
+      rejectUnauthorized: false,
+      ...(isSecureMail ? { servername: cfg.imap_host } : {}),
+    },
+    connectionTimeout: isSecureMail ? 30000 : 15000,
+    greetingTimeout:   isSecureMail ? 30000 : 15000,
+    socketTimeout:     isSecureMail ? 60000 : 30000,
+  };
+
+  if (isSecureMail) {
+    options.disableCompression = true;
+    options.disableAutoEnable  = true;
+    options.disableBinary      = true;
+  }
+
+  return new ImapFlow(options);
+}
+
+function serializeImapError(err: unknown): Record<string, unknown> {
+  if (err instanceof Error) {
+    // deno-lint-ignore no-explicit-any
+    const e = err as any;
+    return {
+      message:        e.message        ?? null,
+      code:           e.code           ?? null,
+      responseText:   e.responseText   ?? null,
+      responseStatus: e.responseStatus ?? null,
+      stack:          e.stack          ?? null,
+    };
+  }
+  return { message: String(err) };
+}
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -67,56 +117,19 @@ serve(async (req: Request) => {
       ? (cfg.imap_sent_folder || "Sent")
       : logicalFolder;
 
-    const imapPort = Number(cfg.imap_porta) || 993;
+    const client = buildImapClient(cfg);
 
-    // Step 1: TCP connectivity check — distingue blocco IP da problemi IMAP/TLS
-    // deno-lint-ignore no-explicit-any
-    const denoConnect = (globalThis as any).Deno?.connect as
-      | ((opts: { hostname: string; port: number }) => Promise<{ close(): void }>)
-      | undefined;
-    if (denoConnect) {
-      try {
-        const tcpConn = await Promise.race([
-          denoConnect({ hostname: cfg.imap_host, port: imapPort }),
-          new Promise<never>((_, rej) =>
-            setTimeout(() => rej(new Error(`TCP timeout: impossibile raggiungere ${cfg.imap_host}:${imapPort} in 8s`)), 8000)
-          ),
-        ]);
-        tcpConn.close();
-      } catch (tcpErr) {
-        throw new Error(`Connessione TCP fallita — ${(tcpErr as Error).message}`);
-      }
-    }
-
-    const client = new ImapFlow({
-      host: cfg.imap_host,
-      port: imapPort,
-      secure: imapPort === 993,
-      auth: { user: cfg.user_email, pass: cfg.password },
-      logger: false,
-      tls: { rejectUnauthorized: false },
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-    });
-
-    // Step 2: IMAP connect con timeout esplicito (ImapFlow può bloccarsi in Deno)
-    await Promise.race([
-      client.connect(),
-      new Promise<never>((_, rej) =>
-        setTimeout(() => rej(new Error("IMAP connect timeout dopo 12s (TLS/greeting bloccato)")), 12000)
-      ),
-    ]);
+    await client.connect();
 
     // deno-lint-ignore no-explicit-any
     const emails: Record<string, any>[] = [];
     let total = 0;
 
     try {
-      const lock = await client.getMailboxLock(realFolder);
+      const lock = await client.getMailboxLock(realFolder, { readOnly: true });
       try {
-        // deno-lint-ignore no-explicit-any
-        const status: any = await client.status(realFolder, { messages: true });
-        total = status.messages ?? 0;
+        // mailbox.exists è popolato da getMailboxLock — evita un round-trip STATUS aggiuntivo
+        total = client.mailbox?.exists ?? 0;
 
         if (total > 0 && offset < total) {
           // Sequence range: count backwards from newest by `offset`, fetch `batchSize`
@@ -206,10 +219,10 @@ serve(async (req: Request) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: unknown) {
-    const msg = e instanceof Error ? e.message : String(e);
-    console.error("[imap-fetch]", msg);
+    const errObj = serializeImapError(e);
+    console.error("[imap-fetch]", JSON.stringify(errObj));
     // Return 200 so the Supabase client passes the body through (non-2xx swallows the message)
-    return new Response(JSON.stringify({ error: msg }), {
+    return new Response(JSON.stringify({ error: errObj.message, detail: errObj }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
