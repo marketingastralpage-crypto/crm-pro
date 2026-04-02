@@ -22,11 +22,11 @@ function buildImapClient(cfg: Record<string, any>): ImapFlow {
   const isSecureMail = typeof cfg.imap_host === "string" &&
     cfg.imap_host.includes("securemail.pro");
 
-  // deno-lint-ignore no-explicit-any
-  const options: Record<string, any> = {
+  return new ImapFlow({
     host: cfg.imap_host,
     port: imapPort,
     secure: imapPort === 993,
+    servername: cfg.imap_host,
     auth: {
       user: cfg.user_email,
       pass: cfg.password,
@@ -34,22 +34,16 @@ function buildImapClient(cfg: Record<string, any>): ImapFlow {
       ...(isSecureMail ? { loginMethod: "LOGIN" } : {}),
     },
     logger: false,
-    tls: {
-      rejectUnauthorized: false,
-      ...(isSecureMail ? { servername: cfg.imap_host } : {}),
-    },
-    connectionTimeout: isSecureMail ? 30000 : 15000,
-    greetingTimeout:   isSecureMail ? 30000 : 15000,
-    socketTimeout:     isSecureMail ? 60000 : 30000,
-  };
-
-  if (isSecureMail) {
-    options.disableCompression = true;
-    options.disableAutoEnable  = true;
-    options.disableBinary      = true;
-  }
-
-  return new ImapFlow(options);
+    emitLogs: true,
+    tls: { rejectUnauthorized: false },
+    disableCompression: isSecureMail,
+    disableAutoEnable:  isSecureMail,
+    disableBinary:      isSecureMail,
+    disableAutoIdle:    true,
+    connectionTimeout:  isSecureMail ? 45000 : 20000,
+    greetingTimeout:    isSecureMail ? 45000 : 20000,
+    socketTimeout:      0,
+  });
 }
 
 function serializeImapError(err: unknown): Record<string, unknown> {
@@ -129,6 +123,17 @@ serve(async (req: Request) => {
     const sourceImapFolder = folderMap[email.folder] || "INBOX";
 
     const client = buildImapClient(cfg);
+
+    client.on("error", (err: unknown) => {
+      console.error("[imap-client:error]", JSON.stringify(serializeImapError(err)));
+    });
+    client.on("close", () => {
+      console.warn("[imap-client:close]");
+    });
+    // deno-lint-ignore no-explicit-any
+    client.on("log", (entry: any) => {
+      console.log("[imap-client:log]", JSON.stringify(entry));
+    });
 
     await client.connect();
     let imapOk = false;
