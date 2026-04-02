@@ -30,7 +30,8 @@ function buildImapClient(cfg: Record<string, any>): ImapFlow {
     auth: {
       user: cfg.user_email,
       pass: cfg.password,
-      ...(isSecureMail ? { loginMethod: "AUTH=LOGIN" } : {}),
+      // securemail.pro accetta solo il comando IMAP LOGIN (non SASL AUTHENTICATE)
+      ...(isSecureMail ? { loginMethod: "LOGIN" } : {}),
     },
     logger: false,
     tls: {

@@ -34,7 +34,8 @@ function buildImapClient(cfg: Record<string, any>): ImapFlow {
     auth: {
       user: cfg.user_email,
       pass: cfg.password,
-      ...(isSecureMail ? { loginMethod: "AUTH=LOGIN" } : {}),
+      // securemail.pro accetta solo il comando IMAP LOGIN (non SASL AUTHENTICATE)
+      ...(isSecureMail ? { loginMethod: "LOGIN" } : {}),
     },
     logger: false,
     tls: {
@@ -119,14 +120,26 @@ serve(async (req: Request) => {
 
     const client = buildImapClient(cfg);
 
-    await client.connect();
+    try {
+      await client.connect();
+    } catch (connErr) {
+      const e = connErr as Error & { code?: string; responseText?: string };
+      throw Object.assign(new Error(`[connect] ${e.message}`), e, { step: "connect" });
+    }
 
     // deno-lint-ignore no-explicit-any
     const emails: Record<string, any>[] = [];
     let total = 0;
 
     try {
-      const lock = await client.getMailboxLock(realFolder);
+      let lock: Awaited<ReturnType<typeof client.getMailboxLock>>;
+      try {
+        lock = await client.getMailboxLock(realFolder);
+      } catch (selErr) {
+        const e = selErr as Error & { code?: string; responseText?: string };
+        throw Object.assign(new Error(`[SELECT ${realFolder}] ${e.message}`), e, { step: "select" });
+      }
+
       try {
         // mailbox.exists è popolato da getMailboxLock — evita un round-trip STATUS aggiuntivo
         total = client.mailbox?.exists ?? 0;
@@ -136,37 +149,46 @@ serve(async (req: Request) => {
           const rangeEnd   = total - offset;
           const rangeStart = Math.max(1, rangeEnd - batchSize + 1);
 
-          for await (const msg of client.fetch(`${rangeStart}:${rangeEnd}`, {
-            envelope: true,
-            source: true,
-            flags: true,
-          })) {
-            try {
-              // deno-lint-ignore no-explicit-any
-              const parsed = await simpleParser(msg.source as any);
-              const fromAddr = parsed.from?.value?.[0];
-              const inReplyTo = parsed.inReplyTo || null;
-              const msgId = parsed.messageId ||
-                `fallback-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-
-              emails.push({
-                message_id:  msgId,
-                thread_id:   inReplyTo || msgId,
-                from_name:   fromAddr?.name  || "",
-                from_email:  fromAddr?.address || "",
-                to:          parsed.to?.text  || "",
-                subject:     parsed.subject   || "",
-                date:        (parsed.date || new Date()).toISOString(),
-                folder:      logicalFolder,   // always use logical name in DB ("INBOX"/"SENT")
+          try {
+            for await (const msg of client.fetch(`${rangeStart}:${rangeEnd}`, {
+              envelope: true,
+              source: true,
+              flags: true,
+            })) {
+              try {
                 // deno-lint-ignore no-explicit-any
-                read:        (msg.flags as any as Set<string>).has("\\Seen"),
-                text_body:   (parsed.text || "").slice(0, 8000),
-                html_body:   (parsed.html  || "").slice(0, 50000),
-                in_reply_to: inReplyTo,
-              });
-            } catch (_) {
-              // skip malformed messages silently
+                const parsed = await simpleParser(msg.source as any);
+                const fromAddr = parsed.from?.value?.[0];
+                const inReplyTo = parsed.inReplyTo || null;
+                const msgId = parsed.messageId ||
+                  `fallback-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+                emails.push({
+                  message_id:  msgId,
+                  thread_id:   inReplyTo || msgId,
+                  from_name:   fromAddr?.name  || "",
+                  from_email:  fromAddr?.address || "",
+                  to:          parsed.to?.text  || "",
+                  subject:     parsed.subject   || "",
+                  date:        (parsed.date || new Date()).toISOString(),
+                  folder:      logicalFolder,   // always use logical name in DB ("INBOX"/"SENT")
+                  // deno-lint-ignore no-explicit-any
+                  read:        (msg.flags as any as Set<string>).has("\\Seen"),
+                  text_body:   (parsed.text || "").slice(0, 8000),
+                  html_body:   (parsed.html  || "").slice(0, 50000),
+                  in_reply_to: inReplyTo,
+                });
+              } catch (_) {
+                // skip malformed messages silently
+              }
             }
+          } catch (fetchErr) {
+            const fe = fetchErr as Error & { code?: string; responseText?: string };
+            throw Object.assign(
+              new Error(`[FETCH ${rangeStart}:${rangeEnd}] ${fe.message}`),
+              fe,
+              { step: "fetch" },
+            );
           }
         }
       } finally {

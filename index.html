@@ -4302,7 +4302,11 @@ async function _runSyncBatch() {
       body: { folder: s.folder, offset: s.offset, batch_size: 50, job_id: s.jobId }
     });
 
-    if (error || r?.error) throw new Error(r?.error || error.message);
+    if (error || r?.error) {
+      const detail = r?.detail;
+      const extra = detail?.responseText ? ` — ${detail.responseText}` : '';
+      throw new Error((r?.error || error.message) + extra);
+    }
 
     const newSynced = s.synced + (r.count || 0);
     const newOffset = s.offset + (r.attempted ?? r.count ?? 0);
