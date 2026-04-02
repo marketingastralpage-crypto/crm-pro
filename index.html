@@ -1655,13 +1655,14 @@ let cgPollTimer = null;
 async function cgLoadCredits() {
   try {
     const { data, error } = await db.from('user_credits').select('credits').maybeSingle();
-    if (!error && data != null) {
-      cgCredits = data.credits;
-      const cnt = document.getElementById('creditsCount');
-      const badge = document.getElementById('creditsBadge');
-      if (cnt) cnt.textContent = cgCredits;
-      if (badge) badge.style.display = 'flex';
-    }
+    // data null = nessuna riga → crediti 0; mostriamo comunque il valore
+    cgCredits = (!error && data != null) ? data.credits : 0;
+    const cnt = document.getElementById('creditsCount');
+    const badge = document.getElementById('creditsBadge');
+    const lbl = document.getElementById('cgCreditsLabel');
+    if (cnt) cnt.textContent = cgCredits;
+    if (badge) badge.style.display = 'flex';
+    if (lbl) lbl.innerHTML = `💎 Crediti: <strong>${cgCredits}</strong>`;
   } catch(_) {}
 }
 
