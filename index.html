@@ -3803,8 +3803,8 @@ async function fetchEmails(forceSync = false, silent = false) {
       const { data: r, error: fnErr } = await db.functions.invoke('imap-fetch', {
         body: { folder: emailState.folder }
       });
-      if (fnErr) {
-        if (!silent) toast('Errore sync IMAP: ' + fnErr.message, 'err');
+      if (fnErr || r?.error) {
+        if (!silent) toast('Errore sync IMAP: ' + (r?.error || fnErr.message), 'err');
       } else {
         if (!silent) toast(`Sincronizzate ${r?.count || 0} email ✓`, 'ok');
       }
@@ -4302,7 +4302,7 @@ async function _runSyncBatch() {
       body: { folder: s.folder, offset: s.offset, batch_size: 50, job_id: s.jobId }
     });
 
-    if (error) throw new Error(r?.error || error.message);
+    if (error || r?.error) throw new Error(r?.error || error.message);
 
     const newSynced = s.synced + (r.count || 0);
     const newOffset = s.offset + (r.count || 0);
