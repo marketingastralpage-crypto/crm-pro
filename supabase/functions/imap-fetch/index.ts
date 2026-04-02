@@ -67,13 +67,15 @@ serve(async (req: Request) => {
       ? (cfg.imap_sent_folder || "Sent")
       : logicalFolder;
 
-    const imapPort = cfg.imap_porta || 993;
+    const imapPort = Number(cfg.imap_porta) || 993;
     const client = new ImapFlow({
       host: cfg.imap_host,
       port: imapPort,
       secure: imapPort === 993,
       auth: { user: cfg.user_email, pass: cfg.password },
       logger: false,
+      tls: { rejectUnauthorized: false },
+      connectionTimeout: 20000,
     });
 
     await client.connect();

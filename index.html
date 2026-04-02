@@ -4891,7 +4891,7 @@ function renderCampaignEditor() {
         <div class="ce-panel">
           <div class="ce-panel-header">
             <div style="flex:1;min-width:0">
-              <div class="ce-panel-title">👥 Destinatari — <em>${escHtml((d.target_ruoli||[]).join(', '))}</em></div>
+              <div class="ce-panel-title">👥 Destinatari — <em style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${escHtml((d.target_ruoli||[]).join(', '))}</em></div>
               <div class="ce-panel-sub" id="ce_selCount">${contactsWithEmail} contatt${contactsWithEmail === 1 ? 'o' : 'i'} con email</div>
             </div>
             <div style="display:flex;gap:5px;flex-shrink:0;margin-left:8px">
