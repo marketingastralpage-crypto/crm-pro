@@ -126,7 +126,7 @@ serve(async (req: Request) => {
     let total = 0;
 
     try {
-      const lock = await client.getMailboxLock(realFolder, { readOnly: true });
+      const lock = await client.getMailboxLock(realFolder);
       try {
         // mailbox.exists è popolato da getMailboxLock — evita un round-trip STATUS aggiuntivo
         total = client.mailbox?.exists ?? 0;
