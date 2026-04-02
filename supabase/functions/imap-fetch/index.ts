@@ -182,7 +182,9 @@ serve(async (req: Request) => {
     }
 
     // `done` is true when this batch reaches the oldest messages
-    const rangeStart = Math.max(1, total - offset - batchSize + 1);
+    const rangeEnd2  = total - offset;
+    const rangeStart = Math.max(1, rangeEnd2 - batchSize + 1);
+    const attempted  = (total > 0 && offset < total) ? (rangeEnd2 - rangeStart + 1) : 0;
     const done = total === 0 || offset >= total || rangeStart === 1;
 
     // Update job progress if a job_id was provided
@@ -200,7 +202,7 @@ serve(async (req: Request) => {
       await supa.from("email_sync_jobs").update(jobUpdate).eq("id", jobId).eq("user_id", userId);
     }
 
-    return new Response(JSON.stringify({ ok: true, count: upserted, total, offset, done }), {
+    return new Response(JSON.stringify({ ok: true, count: upserted, attempted, total, offset, done }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: unknown) {

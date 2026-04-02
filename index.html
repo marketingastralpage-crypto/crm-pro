@@ -4305,7 +4305,7 @@ async function _runSyncBatch() {
     if (error || r?.error) throw new Error(r?.error || error.message);
 
     const newSynced = s.synced + (r.count || 0);
-    const newOffset = s.offset + (r.count || 0);
+    const newOffset = s.offset + (r.attempted ?? r.count ?? 0);
     const total     = r.total || s.total;
     const done      = r.done || newOffset >= total;
 
