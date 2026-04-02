@@ -21,6 +21,39 @@ const corsHeaders = {
 
 const APIFY_TASK_ID = "1YuI0IKFlas6ofSSL";
 
+// Allowed Italian location values (subset of Apify's full allowed list).
+// The bot is restricted to Italian regions only, so we validate against this list.
+const ALLOWED_ITALIAN_LOCATIONS = new Set([
+  "italy",
+  "valle d'aosta, italy",
+  "piemonte, italy",
+  "piedmont, italy",
+  "lombardy, italy",
+  "lombardia, italy",
+  "trentino-alto adige, italy",
+  "trentino-alto adige/south tyrol, italy",
+  "veneto, italy",
+  "friuli-venezia giulia, italy",
+  "liguria, italy",
+  "emilia-romagna, italy",
+  "tuscany, italy",
+  "toscana, italy",
+  "umbria, italy",
+  "marche, italy",
+  "lazio, italy",
+  "abruzzo, italy",
+  "molise, italy",
+  "campania, italy",
+  "puglia, italy",
+  "apulia, italy",
+  "basilicata, italy",
+  "calabria, italy",
+  "sicilia, italy",
+  "sicily, italy",
+  "sardegna, italy",
+  "sardinia, italy",
+]);
+
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -52,6 +85,9 @@ serve(async (req: Request) => {
 
     if (!location_en || typeof location_en !== "string" || location_en.trim() === "") {
       throw new Error("location_en obbligatorio");
+    }
+    if (!ALLOWED_ITALIAN_LOCATIONS.has(location_en.trim().toLowerCase())) {
+      throw new Error(`Location non supportata: "${location_en}". Usa una regione italiana valida (es. Lombardia, Emilia-Romagna, Lazio) oppure "tutta l'Italia".`);
     }
     if (!industry_en || typeof industry_en !== "string" || industry_en.trim() === "") {
       throw new Error("industry_en obbligatorio");
@@ -100,9 +136,12 @@ serve(async (req: Request) => {
 
     const apifyData = await apifyRes.json();
     if (!apifyRes.ok) {
-      throw new Error(
-        apifyData?.error?.message || `Apify API error: ${apifyRes.status}`
-      );
+      const rawMsg: string = apifyData?.error?.message || "";
+      // Intercept Apify input validation errors (huge list of allowed values) and return a friendly message
+      if (rawMsg.includes("Input is not valid") || rawMsg.includes("contact_location") || rawMsg.includes("must be equal to one of the allowed values")) {
+        throw new Error(`La location "${location_en}" non è supportata. Usa una regione italiana valida (es. "lombardy, italy", "emilia-romagna, italy", "lazio, italy") oppure "italy" per tutta l'Italia.`);
+      }
+      throw new Error(rawMsg || `Apify API error: ${apifyRes.status}`);
     }
 
     const apifyRunId: string = apifyData?.data?.id;

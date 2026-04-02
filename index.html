@@ -1679,7 +1679,10 @@ function renderContactGenerator() {
     <div class="cg-wrap" id="cgWrap">
       <div class="cg-header">
         <span class="cg-title">🤖 Genera Contatti</span>
-        <span class="cg-credits-badge" id="cgCreditsLabel">${cgCredits !== null ? '💎 Crediti: <strong>'+cgCredits+'</strong>' : '💎 Caricamento...'}</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <button onclick="cgResetChat()" style="background:transparent;border:1px solid rgba(255,255,255,0.2);color:rgba(255,255,255,0.6);border-radius:6px;padding:3px 10px;font-size:12px;cursor:pointer" title="Inizia una nuova ricerca">↺ Reset</button>
+          <span class="cg-credits-badge" id="cgCreditsLabel">${cgCredits !== null ? '💎 Crediti: <strong>'+cgCredits+'</strong>' : '💎 Caricamento...'}</span>
+        </div>
       </div>
       <div class="cg-messages" id="cgMessages"></div>
       <div id="cgResultsArea"></div>
@@ -1692,7 +1695,7 @@ function renderContactGenerator() {
     </div>`;
 
   if (cgMessages.length === 0) {
-    cgAddBotMessage('Ciao! Dimmi che tipo di contatti stai cercando. Ad esempio:\n• "Voglio tutti i commercialisti di Milano"\n• "Trovami avvocati a Roma"\n• "Dentisti della Sicilia"');
+    cgAddBotMessage('Ciao! Dimmi che tipo di contatti stai cercando.\n\n⚠️ Specifica sempre una regione italiana (es. Lombardia, Emilia-Romagna, Sicilia) oppure "tutta l\'Italia". Le città singole (Milano, Bologna, Roma…) non sono supportate.\n\nAd esempio:\n• "Commercialisti in Emilia-Romagna"\n• "Avvocati nel Lazio"\n• "Dentisti in Toscana"\n• "Consulenti finanziari in tutta l\'Italia"');
   } else {
     cgRenderMessages();
     if (cgPhase === 'results') cgRenderResults();
@@ -1707,6 +1710,19 @@ function cgAddBotMessage(text) {
 function cgAddUserMessage(text) {
   cgMessages.push({ role: 'user', text });
   cgRenderMessages();
+}
+
+function cgResetChat() {
+  if (cgPollTimer) { clearTimeout(cgPollTimer); cgPollTimer = null; }
+  cgMessages = [];
+  cgPhase = 'idle';
+  cgExtracted = null;
+  cgJobId = null;
+  cgContacts = [];
+  const resultsArea = document.getElementById('cgResultsArea');
+  if (resultsArea) resultsArea.innerHTML = '';
+  cgSetInputEnabled(true);
+  cgAddBotMessage('Ciao! Dimmi che tipo di contatti stai cercando.\n\n⚠️ Specifica sempre una regione italiana (es. Lombardia, Emilia-Romagna, Sicilia) oppure "tutta l\'Italia". Le città singole (Milano, Bologna, Roma…) non sono supportate.\n\nAd esempio:\n• "Commercialisti in Emilia-Romagna"\n• "Avvocati nel Lazio"\n• "Dentisti in Toscana"\n• "Consulenti finanziari in tutta l\'Italia"');
 }
 
 function cgRenderMessages() {
@@ -4038,7 +4054,11 @@ async function sendReply() {
     const { error: fnErr } = await db.functions.invoke('smtp-send', {
       body: { to: rc.to, subject: replySubject, body, inReplyTo: rc.messageId, threadId: rc.threadId }
     });
-    if (fnErr) throw new Error(fnErr.message);
+    if (fnErr) {
+      let msg = fnErr.message;
+      try { const ctx = await fnErr.context?.json?.(); if (ctx?.error) msg = ctx.error; } catch {}
+      throw new Error(msg);
+    }
     // Update contact priority to Media when user manually replies
     const replyToEmail = (rc.to || '').toLowerCase().trim();
     const replyContact = contacts.find(c => c.email && c.email.toLowerCase().trim() === replyToEmail);
@@ -4089,7 +4109,11 @@ async function sendCompose() {
     const { error: fnErr } = await db.functions.invoke('smtp-send', {
       body: { to, subject, body }
     });
-    if (fnErr) throw new Error(fnErr.message);
+    if (fnErr) {
+      let msg = fnErr.message;
+      try { const ctx = await fnErr.context?.json?.(); if (ctx?.error) msg = ctx.error; } catch {}
+      throw new Error(msg);
+    }
     toast('Email inviata ✓', 'ok');
     closeComposeModal();
     // Refresh SENT folder if currently visible
@@ -5007,7 +5031,11 @@ async function runCampaignSend() {
       const { error: fnErr } = await db.functions.invoke('smtp-send', {
         body: { to: c.email, subject, body }
       });
-      if (fnErr) throw new Error(fnErr.message);
+      if (fnErr) {
+        let msg = fnErr.message;
+        try { const ctx = await fnErr.context?.json?.(); if (ctx?.error) msg = ctx.error; } catch {}
+        throw new Error(msg);
+      }
       const newStage = c.stage === 'Email inviata' ? 'Followup inviato' : 'Email inviata';
       await updateContactInDB(c.id, { stage: newStage, priorita: 'Bassa' });
       consecutiveErrors = 0;

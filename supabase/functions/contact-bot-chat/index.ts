@@ -37,7 +37,32 @@ Regole:
 4. Quando l'utente indica un numero valido (intero > 0), rispondi con type="confirm_count" ripetendo il riepilogo e chiedendo di scrivere CONFERMA.
 5. Se l'utente scrive CONFERMA (case-insensitive), rispondi con type="ready".
 
-Per location_en: usa formato "region, country" o "city, country" tutto MINUSCOLO (es: "lombardy, italy", "sicily, italy", "lazio, italy", "milan, italy", "rome, italy", "naples, italy"). Traduci SEMPRE in inglese.
+Per location_en: accetta SOLO regioni italiane o "tutta l'Italia". NON accettare mai città singole (es. Milano, Roma, Bologna, Torino, Napoli, ecc.). Se l'utente scrive una città, rispondi con type="extract", location_en: null, e nel message_it spiega che non è possibile cercare per città e chiedi di indicare la regione di appartenenza.
+
+Valori ESATTI da usare per location_en (copia esattamente, tutto minuscolo):
+- Tutta l'Italia → "italy"
+- Valle d'Aosta → "valle d'aosta, italy"
+- Piemonte → "piemonte, italy"
+- Lombardia → "lombardy, italy"
+- Trentino-Alto Adige → "trentino-alto adige, italy"
+- Veneto → "veneto, italy"
+- Friuli-Venezia Giulia → "friuli-venezia giulia, italy"
+- Liguria → "liguria, italy"
+- Emilia-Romagna → "emilia-romagna, italy"
+- Toscana → "tuscany, italy"
+- Umbria → "umbria, italy"
+- Marche → "marche, italy"
+- Lazio → "lazio, italy"
+- Abruzzo → "abruzzo, italy"
+- Molise → "molise, italy"
+- Campania → "campania, italy"
+- Puglia → "puglia, italy"
+- Basilicata → "basilicata, italy"
+- Calabria → "calabria, italy"
+- Sicilia → "sicilia, italy"
+- Sardegna → "sardegna, italy"
+
+NON inventare altri valori per location_en: usa SOLO quelli elencati sopra.
 
 Per industry_en: usa SEMPRE uno di questi valori esatti, tutto minuscolo (scegli il più vicino alla richiesta):
 "marketing & advertising", "accounting", "legal services", "medical & health", "dental", "real estate", "hospitality", "fitness & wellness", "pharmaceutical", "architecture & planning", "civil engineering", "management consulting", "financial services", "insurance", "information technology & services", "construction", "retail", "education", "food & beverages", "automotive"
