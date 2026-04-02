@@ -14,3 +14,7 @@
 - SMTP/IMAP: provider fragili e naming cartelle variabile.
 - Calendar: token refresh e sync locale.
 - Push: code di invio e cleanup sottoscrizioni scadute.
+- Apify/Lead Gen: crediti non atomici, riaccredito su failure, actor ID hardcoded.
+
+## Indice memoria
+- [project_apify_integration.md](project_apify_integration.md) — contact-bot-chat, apify-run-actor, apify-run-status: env, tabelle, punti deboli

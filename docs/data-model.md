@@ -73,6 +73,31 @@ Scopo: notifiche pianificate lato server.
 ### `email_sync_jobs`
 Scopo: tracking sync email per utente/cartella.
 
+### `user_credits`
+Scopo: saldo crediti per la generazione contatti via Apify.
+Campi notevoli:
+- `user_id` (PK, una riga per utente)
+- `credits` (intero >= 0)
+- `updated_at`
+
+Policy:
+- select solo al proprietario
+- update solo al proprietario (le edge functions usano service role e bypassano RLS)
+
+### `contact_gen_jobs`
+Scopo: log dei job di generazione contatti (Apify).
+Campi notevoli:
+- `user_id`
+- `apify_run_id`
+- `location_en`, `industry_en`, `count_requested`
+- `credits_used`
+- `status` in ('pending','running','succeeded','failed')
+- `result_snapshot` (jsonb)
+- `contacts_imported`
+
+Policy:
+- select / insert / update solo al proprietario
+
 ## Regole per future modifiche
 
 1. nuove colonne o tabelle → nuova migration
