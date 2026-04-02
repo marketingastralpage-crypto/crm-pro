@@ -53,6 +53,52 @@ serve(async (req: Request) => {
     const stripThinking = (text: string) =>
       text.replace(/<think>[\s\S]*?<\/think>/gi, "").replace(/<think>[\s\S]*/gi, "").trim();
 
+    // Fallback mock when Groq quota/token limits are exceeded.
+    // Extracts context from the structured bodyPrompt to produce a credible template.
+    const generateMockEmail = (bp: string, sp: string): { body: string; subject: string } => {
+      const extract = (label: string) => {
+        const m = bp.match(new RegExp(`- ${label}:\\s*(.+?)(?:\\n|$)`));
+        return m ? m[1].trim() : "";
+      };
+      const obiettivo  = extract("Obiettivo");
+      const mittente   = extract("Mittente");
+      const prodotto   = extract("Prodotto\\/servizio");
+      const forza      = extract("Punto di forza unico");
+      const garanzia   = extract("Garanzia offerta");
+
+      const body =
+`Gentile {{nome}},
+
+so quanto il ruolo di {{ruolo}} in {{azienda}} richieda soluzioni concrete che portino risultati reali, non promesse.
+
+${mittente ? mittente + "." : "Lavoro con aziende come la tua"} Il mio obiettivo: ${obiettivo || "aiutarti a crescere"}.
+
+${prodotto ? `Con ${prodotto}` : "Con la nostra soluzione"} puoi ${obiettivo || "migliorare le tue performance"}. ${forza ? forza + "." : ""}
+
+${garanzia ? garanzia : "Offriamo una garanzia di soddisfazione: se non ottieni risultati entro 30 giorni, rimborsiamo tutto."}
+
+Potremmo fissare una call di 15 minuti per capire se possiamo essere utili a {{azienda}}?
+
+Cordiali saluti,
+{{mittente_nome}} {{mittente_cognome}}
+{{mittente_ruolo}}`;
+
+      const ruoloM = sp.match(/per un ([^.]+)\./);
+      const subject = ruoloM
+        ? `Una proposta per ${ruoloM[1]}`
+        : `Opportunità per il tuo team`;
+
+      return { body, subject };
+    };
+
+    const isQuotaError = (msg: string) =>
+      msg.includes("Request too large") ||
+      msg.includes("rate_limit") ||
+      msg.includes("TPM") ||
+      msg.includes("tokens per minute") ||
+      msg.includes("Limit") ||
+      msg.includes("quota");
+
     const callGroq = (systemPrompt: string, userPrompt: string, maxTokens: number) =>
       fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -82,7 +128,16 @@ serve(async (req: Request) => {
     const emailData   = await emailRes.json();
     const subjectData = await subjectRes.json();
 
-    if (!emailRes.ok) throw new Error(emailData.error?.message || "Errore Groq API");
+    if (!emailRes.ok) {
+      const errMsg = emailData.error?.message || "Errore Groq API";
+      if (isQuotaError(errMsg)) {
+        const mock = generateMockEmail(bodyPrompt, subjectPrompt);
+        return new Response(JSON.stringify(mock), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(errMsg);
+    }
 
     const body    = stripThinking(emailData.choices[0].message.content);
     const rawSubject = stripThinking(subjectData.choices?.[0]?.message?.content || "");
