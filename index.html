@@ -3403,12 +3403,154 @@ async function loadCampaigns() {
 async function loadSmtpSettings() {
   if (!currentUser) return;
   const { data, error } = await db.from('smtp_settings').select('*').eq('user_id', currentUser.id).maybeSingle();
+  if (!error) smtpSettings = data || null;
+}
+
+function _normSetting(value) {
+  return String(value || '').trim();
+}
+
+function getFooterMissingFields(source = {}) {
+  const s = source || {};
+  const missing = [];
+  if (!_normSetting(s.footer_company_name)) missing.push('ragione sociale');
+  if (!_normSetting(s.footer_address)) missing.push('indirizzo');
+  if (!_normSetting(s.footer_vat_number)) missing.push('partita IVA');
+  return missing;
+}
+
+function hasFooterContent(source = {}) {
+  const s = source || {};
+  return [
+    s.footer_company_name,
+    s.footer_address,
+    s.footer_vat_number,
+    s.footer_phone,
+    s.footer_social_facebook_url,
+    s.footer_social_instagram_url,
+    s.footer_social_linkedin_url,
+    s.footer_social_tiktok_url,
+    s.footer_lia_url,
+    s.footer_unsubscribe_url,
+    s.footer_privacy_url,
+    s.footer_logo_path
+  ].some(v => _normSetting(v));
+}
+
+function getFooterLogoPublicUrl(path) {
+  const cleanPath = _normSetting(path);
+  if (!cleanPath) return '';
+  const { data } = db.storage.from('email-assets').getPublicUrl(cleanPath);
+  return data?.publicUrl || '';
+}
+
+async function persistSmtpSettingsPatch(patch) {
+  if (!currentUser) return { data: null, error: new Error('Utente non autenticato') };
+  const payload = { ...patch, updated_at: new Date().toISOString() };
+
+  if (smtpSettings?.id) {
+    const { data, error } = await db
+      .from('smtp_settings')
+      .update(payload)
+      .eq('id', smtpSettings.id)
+      .eq('user_id', currentUser.id)
+      .select()
+      .single();
+
+    if (!error && data) smtpSettings = data;
+    return { data, error };
+  }
+
+  const { data, error } = await db
+    .from('smtp_settings')
+    .insert({ ...payload, user_id: currentUser.id })
+    .select()
+    .single();
+
   if (!error && data) smtpSettings = data;
+  return { data, error };
+}
+
+async function uploadFooterLogo(input) {
+  const file = input?.files?.[0];
+  if (!file || !currentUser) return;
+  if (file.size > 2 * 1024 * 1024) {
+    toast('Il logo non può superare 2MB', 'err');
+    input.value = '';
+    return;
+  }
+
+  const rawExt = (file.name.split('.').pop() || 'png').toLowerCase();
+  const ext = rawExt.replace(/[^a-z0-9]/g, '') || 'png';
+  const newPath = `${currentUser.id}/footer-logo.${ext}`;
+  const oldPath = _normSetting(smtpSettings?.footer_logo_path);
+  const storage = db.storage.from('email-assets');
+
+  const { error: uploadErr } = await storage.upload(newPath, file, {
+    upsert: true,
+    contentType: file.type || undefined,
+    cacheControl: '3600'
+  });
+
+  if (uploadErr) {
+    toast('Errore upload logo: ' + uploadErr.message, 'err');
+    input.value = '';
+    return;
+  }
+
+  const { error } = await persistSmtpSettingsPatch({ footer_logo_path: newPath });
+  if (error) {
+    if (!oldPath || oldPath !== newPath) await storage.remove([newPath]).catch(() => {});
+    toast('Errore salvataggio logo: ' + error.message, 'err');
+    input.value = '';
+    return;
+  }
+
+  if (oldPath && oldPath !== newPath) await storage.remove([oldPath]).catch(() => {});
+  input.value = '';
+  renderSettings();
+  toast('Logo footer caricato ✓', 'ok');
+}
+
+async function removeFooterLogo() {
+  const oldPath = _normSetting(smtpSettings?.footer_logo_path);
+  if (!oldPath) return;
+  await db.storage.from('email-assets').remove([oldPath]).catch(() => {});
+  const { error } = await persistSmtpSettingsPatch({ footer_logo_path: null });
+  if (error) {
+    toast('Errore rimozione logo: ' + error.message, 'err');
+    return;
+  }
+  renderSettings();
+  toast('Logo footer rimosso', 'ok');
 }
 
 async function renderSettings() {
   await checkCalendarStatus();
   const s = smtpSettings || {};
+  const footerMissing = getFooterMissingFields(s);
+  const footerHasContent = hasFooterContent(s);
+  const footerLogoUrl = getFooterLogoPublicUrl(s.footer_logo_path);
+  const footerStatus = !footerHasContent
+    ? {
+        label: 'Footer non configurato',
+        tone: 'rgba(255,255,255,0.04)',
+        border: 'rgba(255,255,255,0.08)',
+        color: 'var(--muted)'
+      }
+    : footerMissing.length
+      ? {
+          label: `Footer incompleto: manca ${footerMissing.join(', ')}`,
+          tone: 'rgba(255,80,80,0.08)',
+          border: 'rgba(255,80,80,0.22)',
+          color: '#fca5a5'
+        }
+      : {
+          label: 'Footer pronto per compose e campagne',
+          tone: 'rgba(34,197,94,0.08)',
+          border: 'rgba(34,197,94,0.22)',
+          color: '#86efac'
+        };
 
   // Determine current push state for the settings card
   const notifSupported = ('Notification' in window) && ('serviceWorker' in navigator) && ('PushManager' in window);
@@ -3423,7 +3565,6 @@ async function renderSettings() {
   const isIOS = /iP(ad|hone|od)/.test(navigator.userAgent);
   const isInStandaloneIOS = isIOS && window.matchMedia('(display-mode: standalone)').matches;
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  const isAndroid = /Android/.test(navigator.userAgent);
 
   // Android install card: shown only when the browser has an install prompt ready
   const androidInstallCard = (!isStandalone && _deferredInstallPrompt) ? `
@@ -3468,12 +3609,88 @@ async function renderSettings() {
       </div>`;
   }
   document.getElementById('content').innerHTML = `
-    <div style="display:flex;flex-direction:column;gap:18px;max-width:580px">
+    <div style="display:flex;flex-direction:column;gap:18px;max-width:760px">
+
+      <div class="settings-card">
+        <div class="settings-card-icon">FT</div>
+        <h3>Footer Email</h3>
+        <p>Firma HTML automatica usata nelle nuove email e nelle campagne. Le risposte restano senza footer.</p>
+        <div style="margin:0 0 18px 0;padding:10px 12px;border-radius:10px;background:${footerStatus.tone};border:1px solid ${footerStatus.border};font-size:12px;color:${footerStatus.color}">
+          ${footerStatus.label}
+        </div>
+        <div class="settings-form-col">
+          <div class="form-group">
+            <label>Logo</label>
+            ${footerLogoUrl
+              ? `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:10px">
+                  <div style="padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:rgba(255,255,255,0.02)">
+                    <img src="${escHtml(footerLogoUrl)}" alt="Logo footer" style="display:block;max-width:140px;max-height:54px;width:auto;height:auto">
+                  </div>
+                  <button type="button" class="btn btn-secondary btn-sm" onclick="removeFooterLogo()">Rimuovi logo</button>
+                </div>`
+              : `<div style="margin-bottom:10px;padding:12px;border:1px dashed var(--border);border-radius:12px;color:var(--muted);font-size:12px">Nessun logo caricato</div>`
+            }
+            <input id="s_footer_logo" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp" onchange="uploadFooterLogo(this)">
+            <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block">Upload pubblico su Supabase Storage. Formati: PNG, JPG, SVG, WebP. Max 2MB.</small>
+          </div>
+          <div class="form-group">
+            <label>Ragione sociale *</label>
+            <input id="s_footer_company_name" type="text" placeholder="Astralpage S.R.L." value="${escHtml(s.footer_company_name||'')}">
+          </div>
+          <div class="form-group">
+            <label>Indirizzo *</label>
+            <input id="s_footer_address" type="text" placeholder="Via Massarenti, 480 - 40131 Bologna (BO)" value="${escHtml(s.footer_address||'')}">
+          </div>
+          <div class="form-group">
+            <label>Partita IVA *</label>
+            <input id="s_footer_vat_number" type="text" placeholder="03608431205" value="${escHtml(s.footer_vat_number||'')}">
+          </div>
+          <div class="form-group">
+            <label>Email footer</label>
+            <input type="text" value="${escHtml(s.user_email||'')}" disabled style="opacity:0.75;cursor:not-allowed">
+            <small style="color:var(--muted);font-size:11px;margin-top:4px;display:block">Viene presa automaticamente dall'account email che invia.</small>
+          </div>
+          <div class="form-group">
+            <label>Telefono</label>
+            <input id="s_footer_phone" type="text" placeholder="+39 051 1234567" value="${escHtml(s.footer_phone||'')}">
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding-top:4px">Social</div>
+          <div class="form-group">
+            <label>Facebook</label>
+            <input id="s_footer_social_facebook_url" type="url" placeholder="https://facebook.com/..." value="${escHtml(s.footer_social_facebook_url||'')}">
+          </div>
+          <div class="form-group">
+            <label>Instagram</label>
+            <input id="s_footer_social_instagram_url" type="url" placeholder="https://instagram.com/..." value="${escHtml(s.footer_social_instagram_url||'')}">
+          </div>
+          <div class="form-group">
+            <label>LinkedIn</label>
+            <input id="s_footer_social_linkedin_url" type="url" placeholder="https://linkedin.com/company/..." value="${escHtml(s.footer_social_linkedin_url||'')}">
+          </div>
+          <div class="form-group">
+            <label>TikTok</label>
+            <input id="s_footer_social_tiktok_url" type="url" placeholder="https://tiktok.com/@..." value="${escHtml(s.footer_social_tiktok_url||'')}">
+          </div>
+          <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;padding-top:4px">Link legali</div>
+          <div class="form-group">
+            <label>Link LIA</label>
+            <input id="s_footer_lia_url" type="url" placeholder="https://tuodominio.it/lia/" value="${escHtml(s.footer_lia_url||'')}">
+          </div>
+          <div class="form-group">
+            <label>Link Disiscrizione</label>
+            <input id="s_footer_unsubscribe_url" type="url" placeholder="https://tuodominio.it/unsubscribe" value="${escHtml(s.footer_unsubscribe_url||'')}">
+          </div>
+          <div class="form-group">
+            <label>Link Privacy Policy</label>
+            <input id="s_footer_privacy_url" type="url" placeholder="https://tuodominio.it/privacy-policy/" value="${escHtml(s.footer_privacy_url||'')}">
+          </div>
+        </div>
+      </div>
 
       <div class="settings-card">
         <div class="settings-card-icon">👤</div>
-        <h3>Profilo Mittente</h3>
-        <p>Nome, cognome e ruolo del mittente — usati come firma nelle email delle campagne.</p>
+        <h3>Profilo Mittente Campagne</h3>
+        <p>Nome, cognome e ruolo usati dai placeholder nelle email generate per le campagne.</p>
         <div class="settings-form-col">
           <div class="form-group">
             <label>Nome</label>
@@ -3653,18 +3870,43 @@ async function saveSmtpSettings() {
   const mittente_nome    = document.getElementById('s_mittente_nome').value.trim();
   const mittente_cognome = document.getElementById('s_mittente_cognome').value.trim();
   const mittente_ruolo   = document.getElementById('s_mittente_ruolo').value.trim();
+  const footer_company_name = document.getElementById('s_footer_company_name').value.trim();
+  const footer_address = document.getElementById('s_footer_address').value.trim();
+  const footer_vat_number = document.getElementById('s_footer_vat_number').value.trim();
+  const footer_phone = document.getElementById('s_footer_phone').value.trim();
+  const footer_social_facebook_url = document.getElementById('s_footer_social_facebook_url').value.trim();
+  const footer_social_instagram_url = document.getElementById('s_footer_social_instagram_url').value.trim();
+  const footer_social_linkedin_url = document.getElementById('s_footer_social_linkedin_url').value.trim();
+  const footer_social_tiktok_url = document.getElementById('s_footer_social_tiktok_url').value.trim();
+  const footer_lia_url = document.getElementById('s_footer_lia_url').value.trim();
+  const footer_unsubscribe_url = document.getElementById('s_footer_unsubscribe_url').value.trim();
+  const footer_privacy_url = document.getElementById('s_footer_privacy_url').value.trim();
 
-  const payload = { user_email, password, host, porta, imap_host, imap_porta, imap_sent_folder, mittente_nome, mittente_cognome, mittente_ruolo, updated_at: new Date().toISOString() };
-  let error;
-
-  if (smtpSettings?.id) {
-    ({ error } = await db.from('smtp_settings').update(payload).eq('id', smtpSettings.id).eq('user_id', currentUser.id));
-    if (!error) smtpSettings = { ...smtpSettings, ...payload };
-  } else {
-    const { data, error: err } = await db.from('smtp_settings').insert({ ...payload, user_id: currentUser.id }).select().single();
-    error = err;
-    if (!error) smtpSettings = data;
-  }
+  const payload = {
+    user_email,
+    password,
+    host,
+    porta,
+    imap_host,
+    imap_porta,
+    imap_sent_folder,
+    mittente_nome,
+    mittente_cognome,
+    mittente_ruolo,
+    footer_company_name,
+    footer_address,
+    footer_vat_number,
+    footer_phone,
+    footer_social_facebook_url,
+    footer_social_instagram_url,
+    footer_social_linkedin_url,
+    footer_social_tiktok_url,
+    footer_lia_url,
+    footer_unsubscribe_url,
+    footer_privacy_url,
+    footer_logo_path: smtpSettings?.footer_logo_path || null
+  };
+  const { error } = await persistSmtpSettingsPatch(payload);
 
   if (error) { toast('Errore salvataggio: ' + error.message, 'err'); return; }
   renderSettings();
@@ -4107,7 +4349,7 @@ async function sendCompose() {
 
   try {
     const { error: fnErr } = await db.functions.invoke('smtp-send', {
-      body: { to, subject, body }
+      body: { to, subject, body, includeFooter: true }
     });
     if (fnErr) {
       let msg = fnErr.message;
@@ -5033,7 +5275,7 @@ async function runCampaignSend() {
 
     try {
       const { error: fnErr } = await db.functions.invoke('smtp-send', {
-        body: { to: c.email, subject, body }
+        body: { to: c.email, subject, body, includeFooter: true }
       });
       if (fnErr) {
         let msg = fnErr.message;
