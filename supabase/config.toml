@@ -18,3 +18,12 @@ verify_jwt = false
 
 [functions.imap-action]
 verify_jwt = false
+
+[functions.contract-compose]
+verify_jwt = false
+
+[functions.contract-template-admin]
+verify_jwt = false
+
+[functions.contract-export]
+verify_jwt = false

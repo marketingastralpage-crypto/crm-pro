@@ -1,4 +1,7 @@
 {
+  "scripts": {
+    "test:contracts": "node --test tests/contracts-engine.test.mjs"
+  },
   "devDependencies": {
     "pg": "^8.20.0",
     "supabase": "^2.82.0"
