@@ -993,9 +993,12 @@
 
   async function saveProfiles() {
     try {
-      setBusy("Salvo profilo brand e legale...");
       const user = getCurrentUserSafe();
+      if (!user) throw new Error("Utente non autenticato");
       const now = new Date().toISOString();
+
+      // Read the form before showing the busy overlay, otherwise the rerender
+      // would recreate the inputs from stale state and discard the typed values.
       const brandPayload = {
         user_id: user.id,
         brand_name: document.getElementById("ct_brand_name")?.value.trim() || "",
@@ -1028,6 +1031,8 @@
         forum_text: document.getElementById("ct_legal_forum")?.value.trim() || "",
         updated_at: now,
       };
+
+      setBusy("Salvo profilo brand e legale...");
 
       const [brandResult, legalResult] = await Promise.all([
         getDb().from("contract_brand_profiles").upsert(brandPayload, { onConflict: "user_id" }).select("*").maybeSingle(),
